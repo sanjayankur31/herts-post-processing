@@ -19,13 +19,15 @@
 
 #include <iomanip>
 #include <exception>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string>
 #include <iterator>
 #include <thread>
 #include <boost/program_options.hpp>
 #include <iostream>
 #include <fstream>
+#include <ctime>
+
 namespace po = boost::program_options;
 
 struct param
@@ -46,6 +48,9 @@ struct param
 
     std::string patternfile_prefix;
     std::string recallfile_prefix;
+
+    std::string excitatory_raster_file;
+    std::string inhibitory_raster_file;
 
 } parameters;
 
@@ -76,6 +81,20 @@ calculateTimeToPlotList (int num_pat, std::vector <unsigned int> stage_times)
     return graphing_times;
 }		/* -----  end of function calculateTimeToPlotList  ----- */
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  extractSegments
+ *  Description:  Extract the required segment from the main map
+ * =====================================================================================
+ */
+    void
+extractSegments (  )
+{
+    return;
+}		/* -----  end of function extractSegments  ----- */
+
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  main
@@ -85,12 +104,15 @@ calculateTimeToPlotList (int num_pat, std::vector <unsigned int> stage_times)
     int
 main(int ac, char* av[])
 {
-    std::multimap<double, int> raster_data;
     std::string raster_file_name_e;
     std::string raster_file_name_i;
     int num_threads = 12;
     int errcode = 0;
     std::vector<double> graphing_times;
+    clock_t clock_start, clock_end;
+    std::multimap<double, unsigned int> raster_data_E;
+    std::multimap<double, unsigned int> raster_data_I;
+
 
     try {
 
@@ -99,7 +121,10 @@ main(int ac, char* av[])
             ("help,h", "produce help message")
             ("out", po::value<std::string>(&(parameters.output_file)), "output filename")
             ("config,c", po::value<std::string>(&(parameters.config_file))->default_value("simulation_config.cfg"),"configuration file to be used to find parameter values for this simulation run")
+            ("excitatory,e", po::value<std::string>(&(parameters.excitatory_raster_file)),"Excitatory raster file path")
+            ("inhibitory,i", po::value<std::string>(&(parameters.inhibitory_raster_file)),"Inhibitory raster file path")
             ;
+
 
         po::options_description params("Parameters");
         params.add_options()
@@ -145,8 +170,26 @@ main(int ac, char* av[])
 
     graphing_times = calculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
 
+    std::cout << "\n";
     for (std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
         std::cout << *i << ' ';
+    std::cout << "\n";
     
+
+    if (parameters.excitatory_raster_file != "")
+    {
+        std::ifstream ifs_excitatory(parameters.excitatory_raster_file);
+        double timeE; 
+        unsigned int neuronID;
+        
+        clock_start = clock();
+        while( ifs_excitatory >> timeE >> neuronID)
+            raster_data_E.insert(std::pair<double, unsigned int>(timeE, neuronID));
+        clock_end = clock();
+
+        std::cout << "Time taken to read in the file: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
+    }
+
+
 
 }				/* ----------  end of function main  ---------- */
