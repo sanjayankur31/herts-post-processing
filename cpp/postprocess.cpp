@@ -104,8 +104,6 @@ extractSegments (  )
     int
 main(int ac, char* av[])
 {
-    std::string raster_file_name_e;
-    std::string raster_file_name_i;
     int num_threads = 12;
     int errcode = 0;
     std::vector<double> graphing_times;
@@ -170,24 +168,28 @@ main(int ac, char* av[])
 
     graphing_times = calculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
 
-    std::cout << "\n";
     for (std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
         std::cout << *i << ' ';
     std::cout << "\n";
-    
 
-    if (parameters.excitatory_raster_file != "")
+    if (parameters.excitatory_raster_file != "" && parameters.inhibitory_raster_file != "")
     {
         std::ifstream ifs_excitatory(parameters.excitatory_raster_file);
+        std::ifstream ifs_inhibitory(parameters.inhibitory_raster_file);
         double timeE; 
         unsigned int neuronID;
-        
         clock_start = clock();
         while( ifs_excitatory >> timeE >> neuronID)
             raster_data_E.insert(std::pair<double, unsigned int>(timeE, neuronID));
         clock_end = clock();
-
         std::cout << "Time taken to read in the file: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
+        
+        clock_start = clock();
+        for(std::multimap<double, unsigned int>::iterator it = raster_data_E.lower_bound(graphing_times[0] -1.); it != raster_data_E.upper_bound(graphing_times[0]); ++it)
+            std::cout << it->first << "\t" << it->second << "\n";
+
+        clock_end = clock();
+        std::cout << "Time taken to find and list one section: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
     }
 
 
