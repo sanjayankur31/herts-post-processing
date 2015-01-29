@@ -1,3 +1,0 @@
-[submodule "cpp/ThreadPool"]
-	path = cpp/ThreadPool
-	url = git@github.com:sanjayankur31/ThreadPool.git
