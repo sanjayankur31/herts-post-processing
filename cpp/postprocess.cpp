@@ -82,17 +82,49 @@ calculateTimeToPlotList (int num_pat, std::vector <unsigned int> stage_times)
 }		/* -----  end of function calculateTimeToPlotList  ----- */
 
 
+
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  extractSegments
- *  Description:  Extract the required segment from the main map
+ *         Name:  timeLords
+ *  Description:  
  * =====================================================================================
  */
     void
-extractSegments (  )
+timeLords (std::multimap<double, unsigned int> &dataE, std::multimap<double, unsigned int> &dataI, double timeToFly, std::string output_file  )
 {
-    return;
-}		/* -----  end of function extractSegments  ----- */
+    std::vector <unsigned int>neuronsE;
+    std::vector <unsigned int>neuronsI;
+    std::cout << "Thread " << std::this_thread::get_id() << " working on it, Sir!" << "\n"
+    for(std::multimap<double, unsigned int>::iterator it = dataI.lower_bound(timeToFly -1.); it != dataI.upper_bound(timeToFly); ++it)
+        neuronsI.emplace_back(it->second)
+
+    for(std::multimap<double, unsigned int>::iterator it = dataE.lower_bound(timeToFly -1.); it != dataE.upper_bound(timeToFly); ++it)
+        neuronsE.emplace_back(it->second)
+
+    std::cout << "Thread " << std::this_thread::get_id() << " reporting on conclusion, Sir!" << "\n"
+}		/* -----  end of function timeLords  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  populateMaps
+ *  Description:  Funtion that populates my maps - so that I can multithread it
+ * =====================================================================================
+ */
+    int 
+populateMaps(std::multimap<double, unsigned int> &map_to_populate, std::string filename)
+{
+    std::ifstream ifs(filename);
+    double timetemp; 
+    unsigned int neuronID;
+
+    clock_t clock_start = clock();
+    while( ifs >> timetemp >> neuronID)
+        map_to_populate.insert(std::pair<double, unsigned int>(timetemp, neuronID));
+    clock_t clock_end = clock();
+    std::cout << "File " << filename << " read to map in " <<  (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
+    return 0;
+
+}
 
 
 /* 
@@ -104,12 +136,13 @@ extractSegments (  )
     int
 main(int ac, char* av[])
 {
-    int num_threads = 12;
-    int errcode = 0;
     std::vector<double> graphing_times;
     clock_t clock_start, clock_end;
     std::multimap<double, unsigned int> raster_data_E;
     std::multimap<double, unsigned int> raster_data_I;
+    std::vector<std::thread> thread_vector;
+    int threads_max = 12;
+
 
 
     try {
@@ -168,30 +201,66 @@ main(int ac, char* av[])
 
     graphing_times = calculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
 
-    for (std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
-        std::cout << *i << ' ';
-    std::cout << "\n";
-
-    if (parameters.excitatory_raster_file != "" && parameters.inhibitory_raster_file != "")
+    if (parameters.excitatory_raster_file != "")
     {
-        std::ifstream ifs_excitatory(parameters.excitatory_raster_file);
-        std::ifstream ifs_inhibitory(parameters.inhibitory_raster_file);
-        double timeE; 
-        unsigned int neuronID;
-        clock_start = clock();
-        while( ifs_excitatory >> timeE >> neuronID)
-            raster_data_E.insert(std::pair<double, unsigned int>(timeE, neuronID));
-        clock_end = clock();
-        std::cout << "Time taken to read in the file: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
-        
-        clock_start = clock();
-        for(std::multimap<double, unsigned int>::iterator it = raster_data_E.lower_bound(graphing_times[0] -1.); it != raster_data_E.upper_bound(graphing_times[0]); ++it)
-            std::cout << it->first << "\t" << it->second << "\n";
-
-        clock_end = clock();
-        std::cout << "Time taken to find and list one section: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
+        thread_vector.emplace_back(std::thread (populateMaps, std::ref(raster_data_E), parameters.excitatory_raster_file));
+    } 
+    /*  Use the main thread! */
+    if (parameters.inhibitory_raster_file != "")
+    {
+        thread_vector.emplace_back(std::thread (populateMaps, std::ref(raster_data_I), parameters.inhibitory_raster_file));
     }
 
+    for (std::thread &t: thread_vector)
+    {
+        if(t.joinable())
+        {
+            t.join();
+        }
+    }
+    thread_vector.clear();
+    /*  I need to wait for files to be read before I do anything else */
 
+    clock_start = clock();
+    for(int task_counter = 0, std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
+    {
+        /*  Only start a new thread if less than thread_max threads are running */
+        if (task_counter < threads_max)
+        {
+            thread_vector.emplace_back(std::thread (timeLords, std::ref(raster_data_E), std::ref(raster_data_I), *i, parameters.output_file));
+            task_counter++;
+        }
+        /*  If thread_max threads are running, wait for them to finish before
+         *  starting a second round.
+         *
+         *  Yes, this can be optimised by using a thread pool but I really
+         *  don't have the patience to look into ThreadPool or a
+         *  boost::thread_group today! 
+         */
+        else
+        {
+            for (std::thread &t: thread_vector)
+            {
+                if(t.joinable())
+                {
+                    t.join();
+                    task_counter--;
+                }
+            }
+            thread_vector.clear();
+        }
+    }
 
+    /*  Wait for remaining threads to finish */
+    for (std::thread &t: thread_vector)
+    {
+        if(t.joinable())
+        {
+            t.join();
+        }
+    }
+    thread_vector.clear();
+    clock_end = clock();
+    std::cout << "Time taken for the processing part is: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
+    return 0;
 }				/* ----------  end of function main  ---------- */
