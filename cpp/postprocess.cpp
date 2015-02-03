@@ -36,8 +36,10 @@ struct param
     std::string config_file;
     /*  Number of excitatory neurons */
     unsigned int NE;
+    unsigned int graph_widthE;
     /*  Number of inhibitory neurons */
     unsigned int NI;
+    unsigned int graph_widthI;
 
     /*  Times of each stage initialised to 0 */
     std::vector<unsigned int> stage_times;
@@ -45,6 +47,8 @@ struct param
     std::vector<double> plot_times;
     /*  number of patterns to be used in this simulation */
     unsigned int  num_pats;
+    /*  number of columns in the per pattern graphs */
+    unsigned int graph_pattern_cols;
 
     /*  output prefix */
     std::string output_file;
@@ -138,11 +142,6 @@ tardis (std::multimap<double, unsigned int> &dataE, std::multimap<double, unsign
     std::vector <unsigned int>neuronsI_rate;
     std::ostringstream converter;
 
-    /*  Throw into parameter file! */
-    unsigned int rowWidthE = 80;
-    unsigned int rowWidthI = 20;
-
-
     /*  Initialise the 2D vectors */
     for (unsigned int i = 0; i < parameters.num_pats; ++i)
     {
@@ -227,7 +226,7 @@ tardis (std::multimap<double, unsigned int> &dataE, std::multimap<double, unsign
     std::vector<unsigned int>::iterator neuronsI_iterator = neuronsI_rate.begin();
     for (unsigned int i = 0; i < (parameters.NE + parameters.NI); ++i)
     {
-        if((i % (rowWidthI + rowWidthE)) < rowWidthE)
+        if((i % (parameters.graph_widthI + parameters.graph_widthE)) < parameters.graph_widthE)
         {
             /*  print neuronE to neuron matrix stream */
             neurons_matrix_stream << *neuronsE_iterator;
@@ -241,7 +240,7 @@ tardis (std::multimap<double, unsigned int> &dataE, std::multimap<double, unsign
         }
 
         /*  Tab or newline? */
-        if ((i % (rowWidthI + rowWidthE)) != ((rowWidthE + rowWidthI -1)))
+        if ((i % (parameters.graph_widthI + parameters.graph_widthE)) != ((parameters.graph_widthE + parameters.graph_widthI -1)))
         {
             /*  print \n to stream, a new row starts */
             neurons_matrix_stream << "\t";
@@ -267,15 +266,19 @@ tardis (std::multimap<double, unsigned int> &dataE, std::multimap<double, unsign
         converter.str("");
         converter.clear();
         converter << parameters.output_file << "-" << std::to_string(timeToFly) << "-" << std::setw(8)  << std::setfill('0') << std::to_string(j+1) << "-pattern.matrix";
-        /*  if the pattern size isn't a multiple of 10, pad it with 0s */
-        for (unsigned int i = pattern_neurons_rate[j].size(); (i % 10) != 0; ++i)
-            pattern_neurons_rate[j].emplace_back(0);
+
+        /* I could pad the matrix if it isn't rectangular in shape. I
+         * won't, though. 
+         */ 
+/*         for (unsigned int i = pattern_neurons_rate[j].size(); (i % 10) != 0; ++i)
+ *             pattern_neurons_rate[j].emplace_back(0);
+ */
 
         std::ofstream pattern_stream (converter.str());
         for (unsigned int i = 0; i != pattern_neurons_rate[j].size(); ++i)
         {
             pattern_stream << pattern_neurons_rate[j][i];
-            if(((i+1)%10) == 0)
+            if(((i+1)%parameters.graph_pattern_cols) == 0)
                 pattern_stream << "\n";
             else 
                 pattern_stream << "\t";
@@ -394,8 +397,11 @@ main(int ac, char* av[])
             ("patternfile_prefix", po::value<std::string>(&(parameters.patternfile_prefix)), "Pattern files prefix")
             ("recallfile_prefix", po::value<std::string>(&(parameters.recallfile_prefix)), "Recall files prefix")
             ("num_pats", po::value<unsigned int>(&(parameters.num_pats)), "number of pattern file(s) to pick from pattern set")
+            ("graph_pattern_cols", po::value<unsigned int>(&(parameters.graph_pattern_cols)), "Columns in the per pattern matrices - multiple of 10 please")
             ("NE", po::value<unsigned int>(&(parameters.NE)), "Number of excitatory neurons")
+            ("graph_widthE", po::value<unsigned int>(&(parameters.graph_widthE)), "Excitatory columns in the final matrix")
             ("NI", po::value<unsigned int>(&(parameters.NI)), "Number of inhibitory neurons")
+            ("graph_widthI", po::value<unsigned int>(&(parameters.graph_widthI)), "Inhibitory columns in the final matrix")
             ("stage_times", po::value<std::vector<unsigned int> >(&(parameters.stage_times))-> multitoken(), "comma separated list of times for each stage in order")
             ("plot_times", po::value<std::vector<double> >(&(parameters.plot_times))-> multitoken(), "comma separated list of additional plot times")
             ;
