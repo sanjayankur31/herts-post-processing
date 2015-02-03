@@ -37,9 +37,9 @@ function usage ()
     Master script for all postprocessing for my simulations. Tread lightly!
 
     -d  directory to work in
-    -s  <time to plot> plot surface plots for these times. 
+    -s  plot surface plots
     -o  plot overall time plot
-    -S  <time to plot> plot surface plots for these times - do not recollect data - assumes data is already processed in R
+    -S  plot surface plots - do not recollect data - assumes data is already processed in R
     -O  plot overall time plot only - does not recollect data - assumes data is already processed in R
     -c  clean dir of all generated text files
     -C  clean dir of all generated files including graphs
@@ -53,7 +53,7 @@ EOF
 
 function run ()
 {
-    while getopts "hd:s:S:oOcC" OPTION
+    while getopts "hd:sSoOcC" OPTION
     do
         case $OPTION in
             h)
@@ -72,11 +72,11 @@ function run ()
                 collectoveralldata="no"
                 ;;
             s)
-                surfaceplottimes+=" $OPTARG"
+                surfaceplottimes="yes"
                 collectdata="yes"
                 ;;
             S)
-                surfaceplottimes+=" $OPTARG"
+                surfaceplottimes+="yes"
                 collectdata="no"
                 ;;
             c)
@@ -94,7 +94,7 @@ function run ()
 
     pushd "$timestamp"
         (
-        if [[ "$surfaceplottimes" != "" ]] && [[ "$collectdata" == "yes" ]]
+        if [[ "$surfaceplottimes" == "yes" ]] && [[ "$collectdata" == "yes" ]]
         then
             echo  "Generating surface graphs."
             # combine rank files
@@ -105,31 +105,28 @@ function run ()
                 echo "Ras files are already combined. Calling R now."
             fi
 
-            # Get rid of the program name
-            echo "******* Parameters are: $surfaceplottimes"
-
             # Go all R on this data!
-            echo "******* Passing on information to R to process"
+            echo "******* Passing on information to postprocess"
 
-            echo "******* Running: Rscript spikes2plot.R $timestamp" "$surfaceplottimes"
-            Rscript "$SCRIPTDIR"spikes2plot.R "$timestamp" "$surfaceplottimes"
+            echo "******* Running: postprocess -o $timestamp -e $timestamp"".e.ras -i $timestamp"".i.ras"
+            ~/bin/research-bin/postprocess "-o" "$timestamp" "-e" "$timestamp"".e.ras" "-i" "$timestamp"".i.ras"
             echo
 
-            for matrixFile in `ls *.merged.rate`
+            for matrixFile in `ls *.combined.matrix`
             do
-                datafile=$(basename "$matrixFile" ".merged.rate")
+                datafile=$(basename "$matrixFile" ".combined.matrix")
                 sanitycheck
                 echo
                 plotspecifictimeplots
                 echo
             done
-        elif [[ "$surfaceplottimes" != "" ]] && [[ "$collectdata" == "no" ]]
+        elif [[ "$surfaceplottimes" == "yes" ]] && [[ "$collectdata" == "no" ]]
         then
             echo  "Generating surface graphs."
             echo "***** Assuming files already merged. Just plotting with gnuplot."
-            for matrixFile in `ls *.merged.rate`
+            for matrixFile in `ls *.combined.matrix`
             do
-                datafile=$(basename "$matrixFile" ".merged.rate")
+                datafile=$(basename "$matrixFile" ".combined.matrix")
                 sanitycheck
                 echo
                 plotspecifictimeplots
@@ -164,11 +161,11 @@ function run ()
         if [[ "$cleandata" == "temp" ]]
         then
             echo "Deleting all tempfiles. Leaving graphs."
-            rm -fv *-allmerged *-multiline *-matrix *-single *readytomerge *.e.ras *.i.ras *.merged.rate OVERALL-PLOTTED RAS-COMBINED
+            rm -fv *-allmerged *-multiline *-matrix *-single *readytomerge *.e.ras *.i.ras *.combined.matrix OVERALL-PLOTTED RAS-COMBINED
         elif [[ "$cleandata" == "all" ]]
         then
             echo "Deleting all generated files including graphs."
-            rm -fv *-allmerged *-multiline *-matrix *-single *readytomerge *.e.ras *.i.ras *.merged.rate OVERALL-PLOTTED *.png RAS-COMBINED
+            rm -fv *-allmerged *-multiline *-matrix *-single *readytomerge *.e.ras *.i.ras *.combined.matrix OVERALL-PLOTTED *.png RAS-COMBINED
         fi
     popd
     # Not staging to git. Appears to cause some issue - images aren't added somehow.
@@ -179,10 +176,15 @@ function run ()
 
 function collectdata()
 {
-    sort --parallel=12 -g -m "$timestamp"*_e.ras > "$timestamp"".e.ras" &
-    sort --parallel=12 -g -m "$timestamp"*_i.ras > "$timestamp"".i.ras" &
-    wait
-    echo "Ras files combined."
+    if [ -e "$timestamp"".e.ras" ]
+    then
+        echo "Ras file already exists. Skipping sort and merge comands."
+    else
+        sort --parallel=12 -g -m "$timestamp"*_e.ras > "$timestamp"".e.ras" &
+        sort --parallel=12 -g -m "$timestamp"*_i.ras > "$timestamp"".i.ras" &
+        wait
+        echo "Ras files combined."
+    fi
     touch "RAS-COMBINED"
 }
 
@@ -201,7 +203,7 @@ function sanitycheck()
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
     echo "Number of fields: `awk '{print NF; exit}' $finalfile`"
 
-    finalfile="$datafile"".merged.rate"
+    finalfile="$datafile"".combined.matrix"
     echo "** $finalfile **"
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
     echo "Number of fields: `awk '{print NF; exit}' $finalfile`"
@@ -324,10 +326,10 @@ function sanitycheckoverall()
 
 function plotspecifictimeplots ()
 {
-    minErate=$(head -1 "$datafile"".e.rate-multiline")
-    minIrate=$(head -1 "$datafile"".i.rate-multiline")
-    maxErate=$(tail -n 1 "$datafile"".e.rate-multiline")
-    maxIrate=$(tail -n 1 "$datafile"".i.rate-multiline")
+    minErate=$(sort -g "$datafile"".e.rate-multiline" | head -1)
+    minIrate=$(sort -g "$datafile"".i.rate-multiline" | head -1)
+    maxErate=$(sort -g "$datafile"".e.rate-multiline" | tail -1)
+    maxIrate=$(sort -g "$datafile"".i.rate-multiline" | tail -1)
     uniqValsE=$(uniq "$datafile"".e.rate-multiline" | wc -l)
     uniqValsI=$(uniq "$datafile"".i.rate-multiline" | wc -l)
     binwidthE=$(echo "($maxErate-$minErate)/$uniqValsE" | bc -l)
@@ -344,7 +346,7 @@ function plotspecifictimeplots ()
 
     # Figure 4 matrices
     #gnuplot -e "set pm3d map corners2color c1; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; set output \"""$datafile"".ratematrix.png\"; set title \"Firing rates of neurons in the network at time ""$datafile""\"; set xlabel \"neurons\"; set ylabel \"neurons\"; set ytics (\"100\" 0,\"50\" 50,\"0\" 100); splot \"""$datafile"".merged.rate\" matrix"
-    gnuplot -e "set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; set output \"""$datafile"".ratematrix.png\"; set title \"Firing rates of neurons in the network at time ""$datafile""\"; set xlabel \"neurons\"; set ylabel \"neurons\"; set ytics (\"100\" 0,\"50\" 50,\"0\" 100); splot \"""$datafile"".merged.rate\" matrix with image" &
+    gnuplot -e "set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; set output \"""$datafile"".ratematrix.png\"; set title \"Firing rates of neurons in the network at time ""$datafile""\"; set xlabel \"neurons\"; set ylabel \"neurons\"; set ytics (\"100\" 0,\"50\" 50,\"0\" 100); splot \"""$datafile"".combined.matrix\" matrix with image" &
     echo "******* Complete. Generated $datafile"".png."
 
     #Histograms with firing rates for a particular time t
