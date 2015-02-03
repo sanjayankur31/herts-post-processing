@@ -275,7 +275,7 @@ tardis (std::multimap<double, unsigned int> &dataE, std::multimap<double, unsign
         for (unsigned int i = 0; i != pattern_neurons_rate[j].size(); ++i)
         {
             pattern_stream << pattern_neurons_rate[j][i];
-            if((i%10) == 0)
+            if(((i+1)%10) == 0)
                 pattern_stream << "\n";
             else 
                 pattern_stream << "\t";
