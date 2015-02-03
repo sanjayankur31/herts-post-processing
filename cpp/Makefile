@@ -11,7 +11,7 @@ vogels: postprocess.cpp
 	$(CC) $(CXXFLAGS) postprocess.cpp -o postprocess $(LDFLAGS)
 
 install: postprocess
-	mkdir -p ../bin/
-	cp -v vogels ../bin/
+	mkdir -p ../../../bin/
+	cp -v postprocess ../../../bin/
 clean:
-	rm -fv postprocess ../bin/postprocess
+	rm -fv postprocess ../../../bin/postprocess
