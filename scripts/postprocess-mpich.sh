@@ -21,6 +21,16 @@
 # All the post processing required to generate graphs for my simulation
 #
 
+# the function "round()" was taken from 
+# http://stempell.com/2009/08/rechnen-in-bash/
+
+# the round function:
+round()
+{
+    echo $(printf %.$2f $(echo "scale=$2;(((10^$2)*$1)+0.5)/(10^$2)" | bc))
+};
+
+
 SCRIPTDIR="/home/asinha/Documents/02_Code/00_repos/00_mine/auryn/scripts/"
 timestamp=
 cleandata=
@@ -53,7 +63,7 @@ EOF
 
 function run ()
 {
-    while getopts "hd:sSoOcC" OPTION
+    while getopts "hd:sSoOcCp" OPTION
     do
         case $OPTION in
             h)
@@ -85,6 +95,9 @@ function run ()
             C)
                 cleandata="all"
                 ;;
+            p)
+                patterngraphs="yes"
+                ;;
             ?)
                 usage
                 exit 1
@@ -108,8 +121,8 @@ function run ()
             # Go all R on this data!
             echo "******* Passing on information to postprocess"
 
-            echo "******* Running: postprocess -o $timestamp -e $timestamp"".e.ras -i $timestamp"".i.ras"
-            ~/bin/research-bin/postprocess "-o" "$timestamp" "-e" "$timestamp"".e.ras" "-i" "$timestamp"".i.ras"
+            echo "******* Running: postprocess -o $timestamp -e $timestamp"".e.ras.merged -i $timestamp"".i.ras.merged"
+            ~/bin/research-bin/postprocess "-o" "$timestamp" "-e" "$timestamp"".e.ras.merged" "-i" "$timestamp"".i.ras.merged"
             echo
 
             for matrixFile in `ls *.combined.matrix`
@@ -120,6 +133,8 @@ function run ()
                 plotspecifictimeplots
                 echo
             done
+
+
         elif [[ "$surfaceplottimes" == "yes" ]] && [[ "$collectdata" == "no" ]]
         then
             echo  "Generating surface graphs."
@@ -167,6 +182,18 @@ function run ()
             echo "Deleting all generated files including graphs."
             rm -fv *-allmerged *-multiline *-matrix *-single *readytomerge *.e.ras *.i.ras *.combined.matrix OVERALL-PLOTTED *.png RAS-COMBINED
         fi
+        if [ "$patterngraphs" == "yes" ]
+        then
+            numpats=$(grep num_pats simulation_config.cfg | sed "s/.*=//")
+            numcols=$(round "sqrt($numpats)" 0)
+            numrows=$(round "sqrt($numpats) + 1" 0)
+
+            for timefile in `ls *e.rate-multiline`
+            do
+                timeofpattern=$(basename "$timefile" ".e.rate-multiline")
+                generatepatterngraphs
+            done
+        fi
     popd
     # Not staging to git. Appears to cause some issue - images aren't added somehow.
     echo "Output in $timestamp"
@@ -180,8 +207,8 @@ function collectdata()
     then
         echo "Ras file already exists. Skipping sort and merge comands."
     else
-        sort --parallel=12 -g -m "$timestamp"*_e.ras > "$timestamp"".e.ras" &
-        sort --parallel=12 -g -m "$timestamp"*_i.ras > "$timestamp"".i.ras" &
+        sort --parallel=12 -g -m "$timestamp"*_e.ras > "$timestamp"".e.ras.merged" &
+        sort --parallel=12 -g -m "$timestamp"*_i.ras > "$timestamp"".i.ras.merged" &
         wait
         echo "Ras files combined."
     fi
@@ -323,6 +350,19 @@ function sanitycheckoverall()
         fi
     done
 }
+function generatepatterngraphs ()
+{
+    gnuplotcommand="set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"""$timeofpattern"".patterns.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
+
+    for i in `seq 1 $numpats`;
+    do
+        patternfilename="$timeofpattern""-""$(printf %08d $i)""-pattern.matrix"
+        gnuplotcommand+="set cbrange [0:200]; set xlabel \"neurons\"; set ylabel \"neurons\"; set title \"pattern ""$i""\"; splot \"""$patternfilename""\" matrix with image; "
+    done
+    gnuplotcommand+="unset multiplot;"
+    gnuplot -e "$gnuplotcommand" &
+    echo "*********** Patterns at time $timeofpattern generated *****************"
+}
 
 function plotspecifictimeplots ()
 {
@@ -346,7 +386,7 @@ function plotspecifictimeplots ()
 
     # Figure 4 matrices
     #gnuplot -e "set pm3d map corners2color c1; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; set output \"""$datafile"".ratematrix.png\"; set title \"Firing rates of neurons in the network at time ""$datafile""\"; set xlabel \"neurons\"; set ylabel \"neurons\"; set ytics (\"100\" 0,\"50\" 50,\"0\" 100); splot \"""$datafile"".merged.rate\" matrix"
-    gnuplot -e "set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; set output \"""$datafile"".ratematrix.png\"; set title \"Firing rates of neurons in the network at time ""$datafile""\"; set xlabel \"neurons\"; set ylabel \"neurons\"; set ytics (\"100\" 0,\"50\" 50,\"0\" 100); splot \"""$datafile"".combined.matrix\" matrix with image" &
+    gnuplot -e "set view map; set cbrange [0:200]; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; set output \"""$datafile"".ratematrix.png\"; set title \"Firing rates of neurons in the network at time ""$datafile""\"; set xlabel \"neurons\"; set ylabel \"neurons\"; set ytics (\"100\" 0,\"50\" 50,\"0\" 100); splot \"""$datafile"".combined.matrix\" matrix with image" &
     echo "******* Complete. Generated $datafile"".png."
 
     #Histograms with firing rates for a particular time t
