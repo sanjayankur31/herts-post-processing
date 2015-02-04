@@ -53,6 +53,7 @@ function usage ()
     -O  plot overall time plot only - does not recollect data - assumes data is already processed in R
     -c  clean dir of all generated text files
     -C  clean dir of all generated files including graphs
+    -t  plot signal to noise ratio files
     -h  print this message and exit
 
     NOTE: Must use flags repeatedly for bash getopts.
@@ -63,7 +64,7 @@ EOF
 
 function run ()
 {
-    while getopts "hd:sSoOcCp" OPTION
+    while getopts "hd:sSoOcCpt" OPTION
     do
         case $OPTION in
             h)
@@ -97,6 +98,9 @@ function run ()
                 ;;
             p)
                 patterngraphs="yes"
+                ;;
+            t)
+                snrgraphs="yes"
                 ;;
             ?)
                 usage
@@ -173,7 +177,7 @@ function run ()
         fi
         ) &
         wait
-        if [[ "$cleandata" == "temp" ]]
+        (if [[ "$cleandata" == "temp" ]]
         then
             echo "Deleting all tempfiles. Leaving graphs."
             rm -fv *-allmerged *-multiline *-matrix *-single *readytomerge *.e.ras *.i.ras *.combined.matrix OVERALL-PLOTTED RAS-COMBINED
@@ -194,12 +198,36 @@ function run ()
                 generatepatterngraphs
             done
         fi
+        ) &
+        if [ "$snrgraphs" == "yes" ]
+        then 
+            echo "**** Processing SNR information ****"
+            numpats=$(grep num_pats simulation_config.cfg | sed "s/.*=//")
+            numcols=2
+            numrows=$(round "$numpats/2 +1" 0)
+            collatesnrdata
+            generatesnrgraphs
+            echo "**** Processed SNR information ****"
+        fi
+
     popd
     # Not staging to git. Appears to cause some issue - images aren't added somehow.
     echo "Output in $timestamp"
     exit 0
 }
 
+function collatesnrdata ()
+{
+    echo "**** Collecting snr data ****"
+    for i in `seq 1 $numpats`;
+    do
+        sort -g -m $(printf "*%08d-pattern-signal-noise-ratio.matrix" $i) > $(printf "$timestamp-%08d-pattern-signal-noise-ratio.combined.matrix" $i)
+    done
+
+    sort -g -m *pattern-signal-noise-ratio.combined.matrix > Master-signal-noise-ratio.matrix
+    echo "**** Collected snr data ****"
+
+}
 
 function collectdata()
 {
@@ -350,6 +378,7 @@ function sanitycheckoverall()
         fi
     done
 }
+
 function generatepatterngraphs ()
 {
     gnuplotcommand="set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"""$timeofpattern"".patterns.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
@@ -362,6 +391,23 @@ function generatepatterngraphs ()
     gnuplotcommand+="unset multiplot;"
     gnuplot -e "$gnuplotcommand" &
     echo "*********** Patterns at time $timeofpattern generated *****************"
+}
+
+function generatesnrgraphs ()
+{
+    gnuplotcommand="set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"SNR.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"SNR\"; "
+
+    for i in `seq 1 $numpats`;
+    do
+        snrfilename=$(printf "$timestamp-%08d-pattern-signal-noise-ratio.combined.matrix" $i)
+        gnuplotcommand+="set yrange[0:50]; set xlabel \"time\"; set ylabel \"snr\"; set title \"pattern ""$i""\"; plot \"""$snrfilename""\" pt 7 ; "
+    done
+    gnuplotcommand+="unset multiplot;"
+    gnuplot -e "$gnuplotcommand" &
+
+    echo "*********** Patterns at time $timeofpattern generated *****************"
+    gnuplot -e "set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"SNR-master.png\";set xlabel \"time\"; set ylabel \"snr\"; set title \"SNR ALL\"; plot \"Master-signal-noise-ratio.matrix\" with lines" &
+    echo "*********** Master SNR graph generated *****************"
 }
 
 function plotspecifictimeplots ()
