@@ -36,12 +36,12 @@ EOF
 function default()
 {
     newsimenv=$(date "+%Y%m%d%H%M")
-    configfile="/home/asinha/Documents/02_Code/00_repos/00_mine/auryn/src/simulation_config.cfg"
+    configfile="/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/src/simulation_config.cfg"
     mkdir -v "$newsimenv"
     pushd "$newsimenv"
         cp "$configfile" . -v
         echo "$ mpiexec -n 16 vogels --out $newsimenv"
-        mpiexec -n 16 vogels --out $newsimenv
+        LD_LIBRARY_PATH=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/auryn/src/.libs mpiexec -n 16 ~/bin/research-bin/vogels --out $newsimenv
     popd
     echo "Result directory is: $newsimenv"
     tmux set-buffer "$newsimenv"
