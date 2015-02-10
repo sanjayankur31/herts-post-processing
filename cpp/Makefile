@@ -7,7 +7,7 @@ CC = g++
 
 all: postprocess
 
-vogels: postprocess.cpp
+postprocess: postprocess.cpp
 	$(CC) $(CXXFLAGS) postprocess.cpp -o postprocess $(LDFLAGS)
 
 install: postprocess
