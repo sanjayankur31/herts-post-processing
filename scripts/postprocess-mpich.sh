@@ -235,8 +235,8 @@ function collectdata()
     then
         echo "Ras file already exists. Skipping sort and merge comands."
     else
-        sort --parallel=12 -g -m "$timestamp"*_e.ras > "$timestamp"".e.ras.merged" &
-        sort --parallel=12 -g -m "$timestamp"*_i.ras > "$timestamp"".i.ras.merged" &
+        sort --parallel=20 -g -m "$timestamp"*_e.ras > "$timestamp"".e.ras.merged" &
+        sort --parallel=20 -g -m "$timestamp"*_i.ras > "$timestamp"".i.ras.merged" &
         wait
         echo "Ras files combined."
     fi
