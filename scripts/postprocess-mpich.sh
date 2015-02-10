@@ -246,22 +246,29 @@ function collectdata()
 function sanitycheck()
 {
     echo "Checking rows and columns in generated files."
+    (
     echo "For Excitatory files" 
     finalfile="$datafile"".e.rate-multiline"
     echo "** $finalfile **"
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
     echo "Number of fields: `awk '{print NF; exit}' $finalfile`"
+    ) &
 
+    (
     echo "For Inhibitory files" 
     finalfile="$datafile"".i.rate-multiline"
     echo "** $finalfile **"
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
     echo "Number of fields: `awk '{print NF; exit}' $finalfile`"
+    ) &
 
+    (
     finalfile="$datafile"".combined.matrix"
     echo "** $finalfile **"
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
     echo "Number of fields: `awk '{print NF; exit}' $finalfile`"
+    ) &
+    wait
 
 }
 
@@ -356,27 +363,35 @@ function collectoveralldata()
 function sanitycheckoverall()
 {
     echo "Checking rows and columns in generated files."
+    (
     finalfile="$timestamp"".e.rate-allmerged"
     echo "** $finalfile **"
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
     echo "Number of fields: `awk '{print NF; exit}' $finalfile`"
+    ) &
 
+    (
     finalfile="$timestamp"".i.rate-allmerged"
     echo "** $finalfile **"
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
     echo "Number of fields: `awk '{print NF; exit}' $finalfile`"
+    ) &
 
     for exts in "ie_stdp.weightinfo" "ii_static.weightinfo" "ee_static.weightinfo" "ei_static.weightinfo" "exte_static.weightinfo"
     do
         wildcard="*_""$exts"
         if ls $wildcard 1> /dev/null 2>&1; 
         then
+            (
             finalfile="$timestamp"".""$exts""-allmerged"
             echo "** $finalfile **"
             echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
             echo "Number of fields: `awk '{print NF; exit}' $finalfile`"
+            ) &
         fi
     done
+    wait
+
 }
 
 function generatepatterngraphs ()
@@ -473,7 +488,7 @@ function plotoverallplots ()
             echo "E has $numberofrowsE rows while I has $numberofrowsI!"
         else
             #Firing rate evolution throughout the simulation
-            gnuplot -e "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 10080,10080; set output \"""$timestamp"".timegraphwithweights.png\"; set size 1,1; set multiplot; set title \"Evolution of firing rates\"; set xlabel \"Time (s)\"; set ylabel \"Firing rates (Hz)\"; set origin 0.0, 0.5; set size 1,0.5; plot \"""$timestamp"".e.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsE""] column(col))/""$numberofcolsE"") lc rgb \"blue\" t \"Average Excitatory firing rate (Hz)\" with lines, \"""$timestamp"".i.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsI""] column(col))/""$numberofcolsI"") lc rgb \"red\" t \"Average Inhibitory Firing rate (Hz)\" with lines; set origin 0.0,0.0; set size 1,0.5; set ylabel \"Synaptic weight (nS)\"; set title \"Evolution of synapses\"; plot \"""$timestamp"".ie_stdp.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") lc rgb \"brown\" t \"Average IE (plastic)\" with lines, \"""$timestamp"".ii_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average II (static)\" with lines, \"""$timestamp"".ee_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average EE (static)\" with lines, \"""$timestamp"".ei_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EI (static)\" with lines, \"""$timestamp"".exte_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EXTE (static)\" with lines" &
+            gnuplot -e "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,40\" size 5040,5040 linewidth 5; set output \"""$timestamp"".timegraphwithweights.png\"; set size 1,1; set multiplot; set title \"Evolution of firing rates\"; set xlabel \"Time (s)\"; set ylabel \"Firing rates (Hz)\"; set origin 0.0, 0.5; set size 1,0.5; plot \"""$timestamp"".e.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsE""] column(col))/""$numberofcolsE"") lc rgb \"blue\" t \"Average Excitatory firing rate (Hz)\" with lines, \"""$timestamp"".i.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsI""] column(col))/""$numberofcolsI"") lc rgb \"red\" t \"Average Inhibitory Firing rate (Hz)\" with lines; set origin 0.0,0.0; set size 1,0.5; set ylabel \"Synaptic weight (nS)\"; set title \"Evolution of synapses\"; plot \"""$timestamp"".ie_stdp.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") lc rgb \"brown\" t \"Average IE (plastic)\" with lines, \"""$timestamp"".ii_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average II (static)\" with lines, \"""$timestamp"".ee_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average EE (static)\" with lines, \"""$timestamp"".ei_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EI (static)\" with lines, \"""$timestamp"".exte_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EXTE (static)\" with lines" &
 
             echo "Complete. Generated $timestamp.timegraphwithweights.png"
         fi
