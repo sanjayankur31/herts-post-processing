@@ -24,12 +24,20 @@
 #include <iterator>
 #include <thread>
 #include <boost/program_options.hpp>
+#include <boost/iostreams/device/mapped_file.hpp>
 #include <iostream>
 #include <fstream>
 #include <ctime>
 #include <cmath>
 
 namespace po = boost::program_options;
+
+/*  Make sure this matches in auryn, or you break down */
+struct spikeEvent_type
+{
+    double time;
+    unsigned int neuronID;
+};
 
 struct param
 {
@@ -56,16 +64,24 @@ struct param
     std::string patternfile_prefix;
     std::string recallfile_prefix;
 
-    std::string excitatory_raster_file;
-    std::string inhibitory_raster_file;
+    unsigned int mpi_ranks;
 
 } parameters;
 
-
+long
+GetFileSize(std::string filename)
+{
+    FILE *p_file = NULL;
+    p_file = fopen(filename.c_str(),"rb");
+    fseek(p_file,0,SEEK_END);
+    int size = ftell(p_file);
+    fclose(p_file);
+    return size;
+}
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  calculateTimeToPlotList
- *  Description:  
+ *  Description:  returns the sorted values
  * =====================================================================================
  */
 std::vector<double>
@@ -89,6 +105,7 @@ calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage
             }
         }
     }
+    std::sort(graphing_times.begin(), graphing_times.end());
     return graphing_times;
 }		/* -----  end of function calculateTimeToPlotList  ----- */
 
@@ -134,8 +151,9 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
  *  Description:  
  * =====================================================================================
  */
+#ifdef TARDIS
     void
-tardis (std::multimap<double, unsigned int> &dataE, std::multimap<double, unsigned int> &dataI, std::vector<std::vector<unsigned int> >& patterns, std::vector<std::vector <unsigned int> >& recalls, double timeToFly, struct param parameters)
+tardis (std::map<boost::iostreams::mapped_file_source, long> &dataE, std::map<boost::iostreams::mapped_file_source, long> &dataI, std::vector<std::vector<unsigned int> >& patterns, std::vector<std::vector <unsigned int> >& recalls, double timeToFly, struct param parameters)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
@@ -294,6 +312,7 @@ tardis (std::multimap<double, unsigned int> &dataE, std::multimap<double, unsign
 
     std::cout << "[TARDIS] Thread " << std::this_thread::get_id() << " reporting on conclusion, Sir!" << "\n";
 }		/* -----  end of function tardis  ----- */
+#endif
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -375,14 +394,19 @@ main(int ac, char* av[])
 {
     std::vector<double> graphing_times;
     clock_t clock_start, clock_end, global_clock_start, global_clock_end;
-    std::multimap<double, unsigned int> raster_data_E;
-    std::multimap<double, unsigned int> raster_data_I;
+
+    std::vector<boost::iostreams::mapped_file_source> raster_data_source_E;
+    std::vector<boost::iostreams::mapped_file_source> raster_data_source_I;
+    std::vector<std::vector<unsigned int> > extracted_data_E;
+    std::vector<std::vector<unsigned int> > extracted_data_I;
     std::vector<std::thread> timeLords;
-    int doctors_max = 12;
+    int doctors_max; 
     std::vector<std::vector<unsigned int> > patterns;
     std::vector<std::vector<unsigned int> > recalls;
+    std::ostringstream converter;
 
     global_clock_start = clock();
+
 
     try {
 
@@ -391,8 +415,6 @@ main(int ac, char* av[])
             ("help,h", "produce help message")
             ("out,o", po::value<std::string>(&(parameters.output_file)), "output filename")
             ("config,c", po::value<std::string>(&(parameters.config_file))->default_value("simulation_config.cfg"),"configuration file to be used to find parameter values for this simulation run")
-            ("excitatory,e", po::value<std::string>(&(parameters.excitatory_raster_file)),"Excitatory raster file path")
-            ("inhibitory,i", po::value<std::string>(&(parameters.inhibitory_raster_file)),"Inhibitory raster file path")
             ;
 
 
@@ -408,6 +430,7 @@ main(int ac, char* av[])
             ("graph_widthI", po::value<unsigned int>(&(parameters.graph_widthI)), "Inhibitory columns in the final matrix")
             ("stage_times", po::value<std::vector<unsigned int> >(&(parameters.stage_times))-> multitoken(), "comma separated list of times for each stage in order")
             ("plot_times", po::value<std::vector<double> >(&(parameters.plot_times))-> multitoken(), "comma separated list of additional plot times")
+            ("mpi_ranks", po::value<unsigned int>(&(parameters.mpi_ranks)), "Number of MPI ranks being used")
             ;
 
         po::options_description visible("Allowed options");
@@ -442,43 +465,109 @@ main(int ac, char* av[])
         std::cerr << "Exception of unknown type!\n";
     }
 
+
+    /*  At the most, use 20 threads, other wise WAIT */
+    doctors_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
+
+    /*  Calculate the times when I need to generate my graphs */
     graphing_times = calculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
     for (std::vector<double>::iterator it =  graphing_times.begin(); it != graphing_times.end(); ++it)
         std::cout << *it << "\t";
     std::cout << "\n";
 
-    if (parameters.excitatory_raster_file != "")
-    {
-        std::cout << "Loading e file: " << parameters.excitatory_raster_file << "\n";
-        timeLords.emplace_back(std::thread (populateMaps, std::ref(raster_data_E), parameters.excitatory_raster_file));
-    } 
-    if (parameters.inhibitory_raster_file != "")
-    {
-        std::cout << "Loading i file: " << parameters.inhibitory_raster_file << "\n";
-        timeLords.emplace_back(std::thread (populateMaps, std::ref(raster_data_I), parameters.inhibitory_raster_file));
-    }
-
-    /*  Use the main thread! */
+    /*  Get my patterns and recalls into vectors - these files are relatively
+     *  minuscule */
     getPatternsAndRecalls(std::ref(patterns), std::ref(recalls), parameters);
 
-    for (std::thread &t: timeLords)
-    {
-        if(t.joinable())
-        {
-            t.join();
-        }
-    }
-    timeLords.clear();
-    /*  I need to wait for files to be read before I do anything else */
-
+    /*  Open my memory mapped files - no need to read the entire data into
+     *  memory */
     clock_start = clock();
     int task_counter = 0;
-    for(std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
+    for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
     {
+        /* 3D Vector! Yay! */
+        std::vector<std::vector<std::vector<unsigned int> > > extracted_data_temp;
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "." << i << "_e.ras";
+        std::cout << "Loading e file: " << converter.str() << "\n";
+        raster_data_source_E.emplace_back(boost::iostreams::mapped_file_source(converter.str()));
         /*  Only start a new thread if less than thread_max threads are running */
         if (task_counter < doctors_max)
         {
-            timeLords.emplace_back(std::thread (tardis, std::ref(raster_data_E), std::ref(raster_data_I), std::ref(patterns), std::ref(recalls), *i, parameters));
+            timeLords.emplace_back(std::thread (extractPerTime, std::ref(raster_data_source_E), std::ref(extracted_data_temp), *i));
+            task_counter++;
+        }
+        /*  If thread_max threads are running, wait for them to finish before
+         *  starting a second round.
+         *
+         *  Yes, this can be optimised by using a thread pool but I really
+         *  don't have the patience to look into ThreadPool or a
+         *  boost::thread_group today! 
+         */
+        else
+        {
+            for (std::thread &t: timeLords)
+            {
+                if(t.joinable())
+                {
+                    t.join();
+                    task_counter--;
+                }
+            }
+            timeLords.clear();
+        }
+    }
+
+    int task_counter = 0;
+    for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
+    {
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "." << i << "_i.ras";
+        std::cout << "Loading i file: " << converter.str() << "\n";
+        raster_data_source_I.emplace_back(boost::iostreams::mapped_file_source(converter.str()));
+        std::vector<std::vector<unsigned int> > extracted_data_temp;
+        /*  Only start a new thread if less than thread_max threads are running */
+        if (task_counter < doctors_max)
+        {
+            timeLords.emplace_back(std::thread (extractPerTime, std::ref(raster_data_source_E), std::ref(extracted_data_temp), *i,));
+
+
+            task_counter++;
+        }
+        /*  If thread_max threads are running, wait for them to finish before
+         *  starting a second round.
+         *
+         *  Yes, this can be optimised by using a thread pool but I really
+         *  don't have the patience to look into ThreadPool or a
+         *  boost::thread_group today! 
+         */
+        else
+        {
+            for (std::thread &t: timeLords)
+            {
+                if(t.joinable())
+                {
+                    t.join();
+                    task_counter--;
+                }
+            }
+            timeLords.clear();
+        }
+    }
+    clock_end = clock();
+
+    clock_start = clock();
+    for(std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
+    {
+        std::vector<std::vector<unsigned int> > extracted_data_temp;
+        /*  Only start a new thread if less than thread_max threads are running */
+        if (task_counter < doctors_max)
+        {
+            timeLords.emplace_back(std::thread (extractPerTime, std::ref(raster_data_source_E), std::ref(extracted_data_temp), *i,));
+
+
             task_counter++;
         }
         /*  If thread_max threads are running, wait for them to finish before
