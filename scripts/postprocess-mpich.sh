@@ -49,8 +49,8 @@ function usage ()
     -d  directory to work in
     -s  plot surface plots
     -o  plot overall time plot
-    -S  plot surface plots - do not recollect data - assumes data is already processed in R
-    -O  plot overall time plot only - does not recollect data - assumes data is already processed in R
+    -S  plot surface plots - do not recollect or check data - assumes data is already processed in R
+    -O  plot overall time plot only - does not recollect or check data - assumes data is already processed in R
     -c  clean dir of all generated text files
     -C  clean dir of all generated files including graphs
     -t  plot signal to noise ratio files
@@ -146,8 +146,6 @@ function run ()
             for matrixFile in `ls *.combined.matrix`
             do
                 datafile=$(basename "$matrixFile" ".combined.matrix")
-                sanitycheck
-                echo
                 plotspecifictimeplots
                 echo
             done
@@ -171,7 +169,6 @@ function run ()
         then
             echo  "Generating overall graph."
             echo "**** Assuming data already collected. Replotting only. *****"
-            sanitycheckoverall
             plotoverallplots
             touch "OVERALL-PLOTTED"
         fi
@@ -473,20 +470,35 @@ function plotoverallplots ()
 {
 
     numberofcolsE=$(awk '{print NF; exit}' "$timestamp"".e.rate-allmerged")
-    numberofrowsE=$(wc -l "$timestamp"".e.rate-allmerged" | cut -d " " -f 1)
+    numberofcolsE=$((numberofcolsE - 1))
+    echo "Columns in E: $numberofcolsE"
+    # Save number of rows in a file - so that I can run two wcs in parallel
+    # rather than in sequence - saves time, uses resources more efficiently
+    (
+    LANG="C" wc -l "$timestamp"".e.rate-allmerged" | cut -d " " -f 1 > rowsE.temp
+    ) &
     numberofcolsI=$(awk '{print NF; exit}' "$timestamp"".i.rate-allmerged")
-    numberofrowsI=$(wc -l "$timestamp"".i.rate-allmerged" | cut -d " " -f 1)
+    numberofcolsI=$((numberofcolsI - 1))
+    echo "Columns in I: $numberofcolsI"
+    (
+    LANG="C" wc -l "$timestamp"".i.rate-allmerged" | cut -d " " -f 1 > rowsI.temp
+    ) &
     # All the weight files should have the same number of columns. Do I need to check this?
     # TODO: modify the command after checking individual files. I could probably use if else to append commands but it'll make the script a lot more messy. I should still look into it to prevent future confusions
     numberofcolsSTDP=$(awk '{print NF; exit}' "$timestamp"".ie_stdp.weightinfo-allmerged")
+    numberofcolsSTDP=$((numberofcolsSTDP -1))
+    echo "Columns in STDP weights: $numberofcolsSTDP"
+    wait
 
     if ls *_ie_stdp.weightinfo 1> /dev/null 2>&1; 
     then
-        if [[ "$numberofrowsE" -ne "$numberofrowsI" ]]
+        if [[ `cmp rowsE.temp rowsI.temp` -ne 0 ]]
         then 
             echo "Number of rows in E and I files aren't the same. Check input!"
             echo "E has $numberofrowsE rows while I has $numberofrowsI!"
         else
+            echo "Rows in E/I files: `cat rowsE.temp`"
+            rm rowsE.temp rowsI.temp -fv
             #Firing rate evolution throughout the simulation
             gnuplot -e "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,40\" size 5040,5040 linewidth 5; set output \"""$timestamp"".timegraphwithweights.png\"; set size 1,1; set multiplot; set title \"Evolution of firing rates\"; set xlabel \"Time (s)\"; set ylabel \"Firing rates (Hz)\"; set origin 0.0, 0.5; set size 1,0.5; plot \"""$timestamp"".e.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsE""] column(col))/""$numberofcolsE"") lc rgb \"blue\" t \"Average Excitatory firing rate (Hz)\" with lines, \"""$timestamp"".i.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsI""] column(col))/""$numberofcolsI"") lc rgb \"red\" t \"Average Inhibitory Firing rate (Hz)\" with lines; set origin 0.0,0.0; set size 1,0.5; set ylabel \"Synaptic weight (nS)\"; set title \"Evolution of synapses\"; plot \"""$timestamp"".ie_stdp.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") lc rgb \"brown\" t \"Average IE (plastic)\" with lines, \"""$timestamp"".ii_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average II (static)\" with lines, \"""$timestamp"".ee_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average EE (static)\" with lines, \"""$timestamp"".ei_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EI (static)\" with lines, \"""$timestamp"".exte_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EXTE (static)\" with lines" &
 
