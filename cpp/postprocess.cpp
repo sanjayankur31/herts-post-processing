@@ -144,6 +144,104 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
     return snr;
 }		/* -----  end of function getSNR  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  binary_search_last
+ *  Description:  
+ * =====================================================================================
+ */
+    char * 
+binary_search_last (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
+{
+    char *spikesStart = NULL;
+    char *spikesEnd = NULL;
+    char *spikesMid = NULL;
+    char *found = NULL;
+
+    /*  start of last record */
+    spikesStart =  openMapSource.data();
+    /*  end of last record */
+    spikesEnd =  (spikesStart + openMapSource.size() - 1);
+    spikesMid = spikesStart;
+
+
+    while ( true )
+    {
+        /*  Simple check */
+        if (spikesStart > spikesEnd) return found;
+
+        spikesMid = (spikesStart + spikesEnd)/2;
+        /*  Find the start of a record since spikeCurrent may not always point
+         *  to the beginning of a record */
+        char *currentSpike= (spikesCurrent - (spikesCurrent % sizeof(struct spikeEvent_type)));
+        struct spikeEvent_type *current_record = currentSpike;
+        
+        if (*currentRecord == timeToCompare)
+        {
+            found = spikesMid;
+            spikesStart = spikesMid +1;
+        }
+        if (*currentRecord < timeToCompare)
+        {
+            spikesStart = spikesMid + 1;
+        }
+        if(*currentRecord > timeToCompare)
+        {
+            spikesEnd = spikesMid -1;
+        }
+    }
+    return found;
+}		/* -----  end of function binary_search_last  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  binary_search_first
+ *  Description:  
+ * =====================================================================================
+ */
+    char * 
+binary_search_first (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
+{
+    char *spikesStart = NULL;
+    char *spikesEnd = NULL;
+    char *spikesMid = NULL;
+    char *found = NULL;
+
+    /*  start of first record */
+    spikesStart =  openMapSource.data();
+    /*  end of last record */
+    spikesEnd =  (spikesStart + openMapSource.size() - 1);
+    spikesMid = spikesStart;
+
+
+    while ( true )
+    {
+        /*  Simple check */
+        if (spikesStart > spikesEnd) return found;
+
+        spikesMid = (spikesStart + spikesEnd)/2;
+        /*  Find the start of a record since spikeCurrent may not always point
+         *  to the beginning of a record */
+        char *currentSpike= (spikesCurrent - (spikesCurrent % sizeof(struct spikeEvent_type)));
+        struct spikeEvent_type *current_record = currentSpike;
+        
+        if (*currentRecord == timeToCompare)
+        {
+            found = spikesMid;
+            spikesEnd = spikesMid -1;
+        }
+        if (*currentRecord < timeToCompare)
+        {
+            spikesStart = spikesMid + 1;
+        }
+        if(*currentRecord > timeToCompare)
+        {
+            spikesEnd = spikesMid -1;
+        }
+    }
+    return found;
+}		/* -----  end of function binary_search_first  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -153,7 +251,7 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
  */
 #ifdef TARDIS
     void
-tardis (std::map<boost::iostreams::mapped_file_source, long> &dataE, std::map<boost::iostreams::mapped_file_source, long> &dataI, std::vector<std::vector<unsigned int> >& patterns, std::vector<std::vector <unsigned int> >& recalls, double timeToFly, struct param parameters)
+tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vector<boost::iostreams::mapped_file_source> &dataMapsI, std::vector<std::vector<unsigned int> >& patterns, std::vector<std::vector <unsigned int> >& recalls, double timeToFly, struct param parameters)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
@@ -174,6 +272,17 @@ tardis (std::map<boost::iostreams::mapped_file_source, long> &dataE, std::map<bo
 
     std::cout << "[TARDIS] Thread " << std::this_thread::get_id() << " working on it, Sir!" << "\n";
     /*  Get vector of inhibitory neurons */
+    for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
+    {
+        dataMapsE[i].open();
+        char * chunk_start = binary_search_first(timeToFly - 1., std::ref(dataMapsE[i]));
+        char * chunk_end = binary_search_last(timeToFly, std::ref(dataMapsE[i]));
+
+        dataMapsI[i].open();
+        chunk_start = binary_search_first(timeToFly - 1., std::ref(dataMapsI[i]));
+        chunk_end = binary_search_last(timeToFly, std::ref(dataMapsI[i]));
+
+    }
     for(std::multimap<double, unsigned int>::iterator it = dataI.lower_bound(timeToFly -1.); it != dataI.upper_bound(timeToFly); ++it)
         neuronsI.emplace_back(it->second);
     /*  Sort - makes next operations more efficient, or I think it does */
@@ -397,8 +506,6 @@ main(int ac, char* av[])
 
     std::vector<boost::iostreams::mapped_file_source> raster_data_source_E;
     std::vector<boost::iostreams::mapped_file_source> raster_data_source_I;
-    std::vector<std::vector<unsigned int> > extracted_data_E;
-    std::vector<std::vector<unsigned int> > extracted_data_I;
     std::vector<std::thread> timeLords;
     int doctors_max; 
     std::vector<std::vector<unsigned int> > patterns;
@@ -482,92 +589,33 @@ main(int ac, char* av[])
     /*  Open my memory mapped files - no need to read the entire data into
      *  memory */
     clock_start = clock();
-    int task_counter = 0;
     for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
     {
-        /* 3D Vector! Yay! */
-        std::vector<std::vector<std::vector<unsigned int> > > extracted_data_temp;
         converter.str("");
         converter.clear();
         converter << parameters.output_file << "." << i << "_e.ras";
         std::cout << "Loading e file: " << converter.str() << "\n";
         raster_data_source_E.emplace_back(boost::iostreams::mapped_file_source(converter.str()));
-        /*  Only start a new thread if less than thread_max threads are running */
-        if (task_counter < doctors_max)
-        {
-            timeLords.emplace_back(std::thread (extractPerTime, std::ref(raster_data_source_E), std::ref(extracted_data_temp), *i));
-            task_counter++;
-        }
-        /*  If thread_max threads are running, wait for them to finish before
-         *  starting a second round.
-         *
-         *  Yes, this can be optimised by using a thread pool but I really
-         *  don't have the patience to look into ThreadPool or a
-         *  boost::thread_group today! 
-         */
-        else
-        {
-            for (std::thread &t: timeLords)
-            {
-                if(t.joinable())
-                {
-                    t.join();
-                    task_counter--;
-                }
-            }
-            timeLords.clear();
-        }
-    }
 
-    int task_counter = 0;
-    for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
-    {
         converter.str("");
         converter.clear();
         converter << parameters.output_file << "." << i << "_i.ras";
         std::cout << "Loading i file: " << converter.str() << "\n";
         raster_data_source_I.emplace_back(boost::iostreams::mapped_file_source(converter.str()));
-        std::vector<std::vector<unsigned int> > extracted_data_temp;
-        /*  Only start a new thread if less than thread_max threads are running */
-        if (task_counter < doctors_max)
-        {
-            timeLords.emplace_back(std::thread (extractPerTime, std::ref(raster_data_source_E), std::ref(extracted_data_temp), *i,));
-
-
-            task_counter++;
-        }
-        /*  If thread_max threads are running, wait for them to finish before
-         *  starting a second round.
-         *
-         *  Yes, this can be optimised by using a thread pool but I really
-         *  don't have the patience to look into ThreadPool or a
-         *  boost::thread_group today! 
-         */
-        else
-        {
-            for (std::thread &t: timeLords)
-            {
-                if(t.joinable())
-                {
-                    t.join();
-                    task_counter--;
-                }
-            }
-            timeLords.clear();
-        }
     }
     clock_end = clock();
+    std::cout << "Time taken to memory map my files is: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
+
 
     clock_start = clock();
+    int task_counter = 0;
     for(std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
     {
         std::vector<std::vector<unsigned int> > extracted_data_temp;
         /*  Only start a new thread if less than thread_max threads are running */
         if (task_counter < doctors_max)
         {
-            timeLords.emplace_back(std::thread (extractPerTime, std::ref(raster_data_source_E), std::ref(extracted_data_temp), *i,));
-
-
+            timeLords.emplace_back(std::thread (tardis, std::ref(raster_data_source_E), std::ref(raster_data_source_I), std::ref(patterns), std::ref(recalls), *i, parameters));
             task_counter++;
         }
         /*  If thread_max threads are running, wait for them to finish before
