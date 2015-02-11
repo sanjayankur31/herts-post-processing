@@ -147,10 +147,10 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  binary_search_last
- *  Description:  
+ *  Description:  Last occurence of a key using binary search
  * =====================================================================================
  */
-    char * 
+    char *
 binary_search_last (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
     char *spikesStart = NULL;
@@ -175,7 +175,7 @@ binary_search_last (double timeToCompare, boost::iostreams::mapped_file_source &
          *  to the beginning of a record */
         char *currentSpike= (spikesCurrent - (spikesCurrent % sizeof(struct spikeEvent_type)));
         struct spikeEvent_type *current_record = currentSpike;
-        
+
         if (*currentRecord == timeToCompare)
         {
             found = spikesMid;
@@ -197,10 +197,10 @@ binary_search_last (double timeToCompare, boost::iostreams::mapped_file_source &
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  binary_search_first
- *  Description:  
+ *  Description:  First occurence of a key using binary search
  * =====================================================================================
  */
-    char * 
+    char *
 binary_search_first (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
     char *spikesStart = NULL;
@@ -225,7 +225,7 @@ binary_search_first (double timeToCompare, boost::iostreams::mapped_file_source 
          *  to the beginning of a record */
         char *currentSpike= (spikesCurrent - (spikesCurrent % sizeof(struct spikeEvent_type)));
         struct spikeEvent_type *current_record = currentSpike;
-        
+
         if (*currentRecord == timeToCompare)
         {
             found = spikesMid;
