@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <exception>
 #include <cstdlib>
+#include <cstdio>
 #include <string>
 #include <iterator>
 #include <thread>
@@ -209,52 +210,67 @@ binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &
 {
     std::cout << "Finding first of " << timeToCompare << "\n";
     char *spikesStart = NULL;
-    int numStart = 0;
+    unsigned long int numStart = 0;
     char *spikesEnd = NULL;
-    int numEnd = 0;
+    unsigned long int numEnd = 0;
     char *currentSpike = NULL;
-    int numCurrent = 0
-    int sizediff = 0;
-    int numdiff = 0;
-    int step = 0;
-    int sizeofstruct = sizeof(struct spikeEvent_type);
+    unsigned long int numCurrent = 0;
+/*     int sizediff = 0;
+ */
+    unsigned long int sizediff = 0;
+    unsigned long int numdiff = 0;
+    unsigned long int step = 0;
+    unsigned long int sizeofstruct = sizeof(struct spikeEvent_type);
     struct spikeEvent_type *currentRecord = NULL;
 
     std::cout << "Struct size is: " << sizeofstruct << "\n";
+    std::cout << "Char size is: " << sizeof(char)  << "\n";
+    std::cout << "size of int is: " << sizeof(int)  << "\n";
 
     /*  start of last record */
     spikesStart =  (char *)openMapSource.data();
     numStart = 0;
     /*  end of last record */
     spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
+
+    /*  Number of structs */
     numEnd = (openMapSource.size()/sizeofstruct -1);
-
+    /*  Number of bytes */
     sizediff = spikesEnd - spikesStart;
-    numdiff = numEnd - numStart
-    std::cout << "Number of records in this file: " << (sizediff)/sizeofstruct << "\n";
 
-    while( sizediff > 0)
+    numdiff = numEnd - numStart;
+    std::cout << "Number of records in this file: " << (openMapSource.size() - sizeofstruct)/sizeofstruct << "\n";
+    std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
+    printf("With printf subtraction %zu\n",(spikesEnd - spikesStart));
+    std::cout << "Proper subtraction : " << (spikesEnd - spikesStart) << "\n";
+    std::cout << "sizediff : " << sizediff << "\n";
+    printf("With printf sizediff %zu\n",sizediff);
+    std::cout << "multiplier " << (spikesEnd - spikesStart)/sizediff << "\n";
+    std::cout << "Number of struct records in this file: " << numdiff << "\n";
+
+    while( numdiff > 0)
     {
-        currentSpike = spikesStart;
-        step = (sizediff/2);
-        step -= step%sizeofstruct;
+        numCurrent = numStart;
+        step = (numdiff/2);
 
-        currentSpike += step;
+        numCurrent += step;
+        currentSpike = spikesStart + numCurrent * sizeofstruct;
         currentRecord = (struct spikeEvent_type *)currentSpike;
-        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at " << currentSpike - spikesStart<< "\n";
+        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at line" << numCurrent << "\n";
 
         if (currentRecord->time < timeToCompare)
         {
-            spikesStart = ++currentSpike;
-            sizediff -= step + 1;
+            numStart = ++numCurrent;
+            numdiff -= step + 1;
         }
         else
-            sizediff = step;
+            numdiff = step;
     }
 
-    currentRecord = (struct spikeEvent_type *)spikesStart;
+    currentSpike = spikesStart + (numStart * sizeofstruct);
+    currentRecord = (struct spikeEvent_type *)currentSpike;
     std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
-    return spikesStart;
+    return currentSpike;
 }		/* -----  end of function binary_lower_bound  ----- */
 
 /* 
@@ -288,6 +304,7 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
     for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
     {
         char * chunk_start = binary_lower_bound(timeToFly - 1., std::ref(dataMapsE[i]));
+        return;
         char * chunk_end = binary_upper_bound(timeToFly, std::ref(dataMapsE[i]));
         char * chunkit = NULL;
         if (chunk_end - chunk_start > 0)
