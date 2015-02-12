@@ -30,6 +30,9 @@
 #include <ctime>
 #include <cmath>
 
+#define TARDIS 1
+#define DEBUG_BIN_SEARCH 1
+
 namespace po = boost::program_options;
 
 /*  Make sure this matches in auryn, or you break down */
@@ -153,41 +156,71 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
     char *
 binary_search_last (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
+    std::cout << "Finding last of " << timeToCompare << "\n";
     char *spikesStart = NULL;
     char *spikesEnd = NULL;
     char *spikesMid = NULL;
     char *found = NULL;
+    int sizeofstruct = sizeof(struct spikeEvent_type);
+
+    std::cout << "Struct size is: " << sizeofstruct << "\n";
 
     /*  start of last record */
-    spikesStart =  openMapSource.data();
+    spikesStart =  (char *)openMapSource.data();
     /*  end of last record */
-    spikesEnd =  (spikesStart + openMapSource.size() - 1);
+    spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
     spikesMid = spikesStart;
+    std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
 
+/*     std::cout << "Data starts at: " << static_cast<void*>(spikesStart) << "\n";
+ *     std::cout << "Data ends at: " << static_cast<void*>(spikesEnd) << "\n";
+ *     struct spikeEvent_type *temp; 
+ *     temp = (struct spikeEvent_type *)spikesStart;
+ *     std::cout << temp->time << "    " << temp->neuronID << "\n";
+ *     temp = (struct spikeEvent_type *)spikesEnd;
+ *     std::cout << temp->time << "    " << temp->neuronID << "\n";
+ *     spikesMid = spikesStart + ((spikesEnd - spikesStart)/2);
+ *     char *currentSpike = (spikesMid - ((spikesMid - spikesStart) % sizeofstruct));
+ *     temp = (struct spikeEvent_type *)currentSpike;
+ *     std::cout << temp->time << "    " << temp->neuronID << "\n";
+ *     return NULL;
+ */
 
     while ( true )
     {
         /*  Simple check */
         if (spikesStart > spikesEnd) return found;
 
-        spikesMid = (spikesStart + spikesEnd)/2;
+        spikesMid = spikesStart + ((spikesEnd - spikesStart)/2);
         /*  Find the start of a record since spikeCurrent may not always point
          *  to the beginning of a record */
-        char *currentSpike= (spikesCurrent - (spikesCurrent % sizeof(struct spikeEvent_type)));
-        struct spikeEvent_type *current_record = currentSpike;
+        char *currentSpike = (spikesMid - ((spikesMid - spikesStart) % sizeofstruct));
+        struct spikeEvent_type *currentRecord = NULL;
+        currentRecord = (struct spikeEvent_type *)currentSpike;
 
-        if (*currentRecord == timeToCompare)
+        std::cout << "Data mid at index: " <<  spikesMid - spikesStart << "\n";
+        std::cout << "Current spike record is at index: " << currentSpike - spikesStart << "\n";
+        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
+        if (found != NULL)
         {
-            found = spikesMid;
-            spikesStart = spikesMid +1;
+            struct spikeEvent_type *currentFound = NULL;
+            currentFound = (struct spikeEvent_type *)found;
+            std::cout << "Current found value is: " << (*currentFound).time << "\t" << (*currentFound).neuronID << "\n";
         }
-        if (*currentRecord < timeToCompare)
+
+        if (currentRecord->time == timeToCompare)
         {
-            spikesStart = spikesMid + 1;
+            std::cout << "*** FOUND VALUE ***" << "\n";
+            found = currentSpike;
+            spikesStart = currentSpike +sizeofstruct;
         }
-        if(*currentRecord > timeToCompare)
+        if (currentRecord->time < timeToCompare)
         {
-            spikesEnd = spikesMid -1;
+            spikesStart = currentSpike + sizeofstruct;
+        }
+        if(currentRecord->time > timeToCompare)
+        {
+            spikesEnd = currentSpike -sizeofstruct;
         }
     }
     return found;
@@ -203,41 +236,61 @@ binary_search_last (double timeToCompare, boost::iostreams::mapped_file_source &
     char *
 binary_search_first (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
+    std::cout << "Finding first of" << timeToCompare << "\n";
     char *spikesStart = NULL;
     char *spikesEnd = NULL;
     char *spikesMid = NULL;
     char *found = NULL;
+    int sizeofstruct = sizeof(struct spikeEvent_type);
+
+    std::cout << "Struct size is: " << sizeofstruct << "\n";
 
     /*  start of first record */
-    spikesStart =  openMapSource.data();
+    /*  There's a better way of casting the pointer apparently */
+    spikesStart =  (char *)openMapSource.data();
     /*  end of last record */
-    spikesEnd =  (spikesStart + openMapSource.size() - 1);
+    spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
     spikesMid = spikesStart;
-
+    std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
 
     while ( true )
     {
         /*  Simple check */
         if (spikesStart > spikesEnd) return found;
 
-        spikesMid = (spikesStart + spikesEnd)/2;
+        spikesMid = spikesStart + ((spikesEnd - spikesStart)/2);
         /*  Find the start of a record since spikeCurrent may not always point
          *  to the beginning of a record */
-        char *currentSpike= (spikesCurrent - (spikesCurrent % sizeof(struct spikeEvent_type)));
-        struct spikeEvent_type *current_record = currentSpike;
+        char *currentSpike = (spikesMid - ((spikesMid - spikesStart) % sizeofstruct));
+        struct spikeEvent_type *currentRecord = NULL;
+        currentRecord = (struct spikeEvent_type *)currentSpike;
 
-        if (*currentRecord == timeToCompare)
+
+#ifdef  DEBUG_BIN_SEARCH
+        std::cout << "Data mid at index: " <<  spikesMid - spikesStart << "\n";
+        std::cout << "Current spike record is at index: " << currentSpike - spikesStart << "\n";
+        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
+        if (found != NULL)
         {
-            found = spikesMid;
-            spikesEnd = spikesMid -1;
+            struct spikeEvent_type *currentFound = NULL;
+            currentFound = (struct spikeEvent_type *)found;
+            std::cout << "Current found value is: " << (*currentFound).time << "\t" << (*currentFound).neuronID << "\n";
         }
-        if (*currentRecord < timeToCompare)
+#endif     /* -----  DEBUG_BIN_SEARCH  ----- */
+
+        if (currentRecord->time == timeToCompare)
         {
-            spikesStart = spikesMid + 1;
+            std::cout << "*** FOUND VALUE ***" << "\n";
+            found = currentSpike;
+            spikesEnd = currentSpike - sizeofstruct;
         }
-        if(*currentRecord > timeToCompare)
+        if (currentRecord->time < timeToCompare)
         {
-            spikesEnd = spikesMid -1;
+            spikesStart = currentSpike + sizeofstruct;
+        }
+        if(currentRecord->time > timeToCompare)
+        {
+            spikesEnd = currentSpike - sizeofstruct;
         }
     }
     return found;
@@ -271,21 +324,34 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
     }
 
     std::cout << "[TARDIS] Thread " << std::this_thread::get_id() << " working on it, Sir!" << "\n";
-    /*  Get vector of inhibitory neurons */
     for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
     {
-        dataMapsE[i].open();
         char * chunk_start = binary_search_first(timeToFly - 1., std::ref(dataMapsE[i]));
         char * chunk_end = binary_search_last(timeToFly, std::ref(dataMapsE[i]));
+        char * chunkit = chunk_start;
+        while (chunkit <= chunk_end)
+        {
+            struct spikeEvent_type *buffer;
+            buffer = (struct spikeEvent_type *)chunkit;
+            neuronsE.emplace_back((*buffer).neuronID);
+            chunkit += sizeof(struct spikeEvent_type);
 
-        dataMapsI[i].open();
+        }
+
         chunk_start = binary_search_first(timeToFly - 1., std::ref(dataMapsI[i]));
         chunk_end = binary_search_last(timeToFly, std::ref(dataMapsI[i]));
+        chunkit = chunk_start;
+        while (chunkit <= chunk_end)
+        {
+            struct spikeEvent_type *buffer;
+            buffer = (struct spikeEvent_type *)chunkit;
+            neuronsI.emplace_back((*buffer).neuronID);
+            chunkit += sizeof(struct spikeEvent_type);
+        }
 
     }
-    for(std::multimap<double, unsigned int>::iterator it = dataI.lower_bound(timeToFly -1.); it != dataI.upper_bound(timeToFly); ++it)
-        neuronsI.emplace_back(it->second);
     /*  Sort - makes next operations more efficient, or I think it does */
+    std::sort(neuronsE.begin(), neuronsE.end());
     std::sort(neuronsI.begin(), neuronsI.end());
 
     std::vector<unsigned int>::iterator search_begin = neuronsI.begin();
@@ -300,10 +366,6 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
     /*  We have the inhibitory firing rate! */
 
 
-    /*  Get vector of excitatory neurons */
-    for(std::multimap<double, unsigned int>::iterator it = dataE.lower_bound(timeToFly -1.); it != dataE.upper_bound(timeToFly); ++it)
-        neuronsE.emplace_back(it->second);
-    std::sort(neuronsE.begin(), neuronsE.end());
 
     search_begin = neuronsE.begin();
     for(unsigned int i = 1; i <= parameters.NE; ++i)
@@ -595,13 +657,15 @@ main(int ac, char* av[])
         converter.clear();
         converter << parameters.output_file << "." << i << "_e.ras";
         std::cout << "Loading e file: " << converter.str() << "\n";
-        raster_data_source_E.emplace_back(boost::iostreams::mapped_file_source(converter.str()));
+        raster_data_source_E.emplace_back(boost::iostreams::mapped_file_source());
+        raster_data_source_E[i].open(converter.str());
 
         converter.str("");
         converter.clear();
         converter << parameters.output_file << "." << i << "_i.ras";
         std::cout << "Loading i file: " << converter.str() << "\n";
-        raster_data_source_I.emplace_back(boost::iostreams::mapped_file_source(converter.str()));
+        raster_data_source_I.emplace_back(boost::iostreams::mapped_file_source());
+        raster_data_source_I[i].open(converter.str());
     }
     clock_end = clock();
     std::cout << "Time taken to memory map my files is: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
