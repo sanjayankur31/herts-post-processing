@@ -113,18 +113,16 @@ function run ()
         (
         if [[ "$surfaceplottimes" == "yes" ]] && [[ "$collectdata" == "yes" ]]
         then
-            echo  "Generating surface graphs."
-            # combine rank files
-            if [[ ! -e "RAS-COMBINED" ]]
-            then
-                collectdata
-            else
-                echo "Ras files are already combined. Calling R now."
-            fi
+#            echo  "Generating surface graphs."
+#            # combine rank files
+#            if [[ ! -e "RAS-COMBINED" ]]
+#            then
+#                collectdata
+#            else
+#                echo "Ras files are already combined."
+#            fi
 
-            # Go all R on this data!
             echo "******* Passing on information to postprocess"
-
             echo "******* Running: postprocess -o $timestamp -e $timestamp"".e.ras.merged -i $timestamp"".i.ras.merged"
             ~/bin/research-bin/postprocess "-o" "$timestamp" "-e" "$timestamp"".e.ras.merged" "-i" "$timestamp"".i.ras.merged"
             echo
