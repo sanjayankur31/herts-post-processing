@@ -31,7 +31,6 @@
 #include <cmath>
 
 #define TARDIS 1
-#define DEBUG_BIN_SEARCH 1
 
 namespace po = boost::program_options;
 
@@ -149,19 +148,21 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  binary_search_last
+ *         Name:  binary_upper_bound
  *  Description:  Last occurence of a key using binary search
  * =====================================================================================
  */
     char *
-binary_search_last (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
+binary_upper_bound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
     std::cout << "Finding last of " << timeToCompare << "\n";
     char *spikesStart = NULL;
     char *spikesEnd = NULL;
-    char *spikesMid = NULL;
-    char *found = NULL;
+    char *currentSpike = NULL;
+    int sizediff = 0;
+    int step = 0;
     int sizeofstruct = sizeof(struct spikeEvent_type);
+    struct spikeEvent_type *currentRecord = NULL;
 
     std::cout << "Struct size is: " << sizeofstruct << "\n";
 
@@ -169,132 +170,92 @@ binary_search_last (double timeToCompare, boost::iostreams::mapped_file_source &
     spikesStart =  (char *)openMapSource.data();
     /*  end of last record */
     spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
-    spikesMid = spikesStart;
-    std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
+    sizediff = spikesEnd - spikesStart;
+    std::cout << "Number of records in this file: " << (sizediff)/sizeofstruct << "\n";
 
-/*     std::cout << "Data starts at: " << static_cast<void*>(spikesStart) << "\n";
- *     std::cout << "Data ends at: " << static_cast<void*>(spikesEnd) << "\n";
- *     struct spikeEvent_type *temp; 
- *     temp = (struct spikeEvent_type *)spikesStart;
- *     std::cout << temp->time << "    " << temp->neuronID << "\n";
- *     temp = (struct spikeEvent_type *)spikesEnd;
- *     std::cout << temp->time << "    " << temp->neuronID << "\n";
- *     spikesMid = spikesStart + ((spikesEnd - spikesStart)/2);
- *     char *currentSpike = (spikesMid - ((spikesMid - spikesStart) % sizeofstruct));
- *     temp = (struct spikeEvent_type *)currentSpike;
- *     std::cout << temp->time << "    " << temp->neuronID << "\n";
- *     return NULL;
- */
-
-    while ( true )
+    while( sizediff > 0)
     {
-        /*  Simple check */
-        if (spikesStart > spikesEnd) return found;
+        currentSpike = spikesStart;
+        step = (sizediff/2);
+        step -= step%sizeofstruct;
 
-        spikesMid = spikesStart + ((spikesEnd - spikesStart)/2);
-        /*  Find the start of a record since spikeCurrent may not always point
-         *  to the beginning of a record */
-        char *currentSpike = (spikesMid - ((spikesMid - spikesStart) % sizeofstruct));
-        struct spikeEvent_type *currentRecord = NULL;
+        currentSpike += step;
         currentRecord = (struct spikeEvent_type *)currentSpike;
+        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at " << currentSpike - spikesStart<< "\n";
 
-        std::cout << "Data mid at index: " <<  spikesMid - spikesStart << "\n";
-        std::cout << "Current spike record is at index: " << currentSpike - spikesStart << "\n";
-        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
-        if (found != NULL)
+        if (!(timeToCompare < currentRecord->time))
         {
-            struct spikeEvent_type *currentFound = NULL;
-            currentFound = (struct spikeEvent_type *)found;
-            std::cout << "Current found value is: " << (*currentFound).time << "\t" << (*currentFound).neuronID << "\n";
+            spikesStart = ++currentSpike;
+            sizediff -= step + 1;
         }
-
-        if (currentRecord->time == timeToCompare)
-        {
-            std::cout << "*** FOUND VALUE ***" << "\n";
-            found = currentSpike;
-            spikesStart = currentSpike +sizeofstruct;
-        }
-        if (currentRecord->time < timeToCompare)
-        {
-            spikesStart = currentSpike + sizeofstruct;
-        }
-        if(currentRecord->time > timeToCompare)
-        {
-            spikesEnd = currentSpike -sizeofstruct;
-        }
+        else
+            sizediff = step;
     }
-    return found;
-}		/* -----  end of function binary_search_last  ----- */
+
+    currentRecord = (struct spikeEvent_type *)spikesStart;
+    std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
+    return spikesStart;
+}		/* -----  end of function binary_upper_bound  ----- */
 
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  binary_search_first
+ *         Name:  binary_lower_bound
  *  Description:  First occurence of a key using binary search
  * =====================================================================================
  */
     char *
-binary_search_first (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
+binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
-    std::cout << "Finding first of" << timeToCompare << "\n";
+    std::cout << "Finding first of " << timeToCompare << "\n";
     char *spikesStart = NULL;
+    int numStart = 0;
     char *spikesEnd = NULL;
-    char *spikesMid = NULL;
-    char *found = NULL;
+    int numEnd = 0;
+    char *currentSpike = NULL;
+    int numCurrent = 0
+    int sizediff = 0;
+    int numdiff = 0;
+    int step = 0;
     int sizeofstruct = sizeof(struct spikeEvent_type);
+    struct spikeEvent_type *currentRecord = NULL;
 
     std::cout << "Struct size is: " << sizeofstruct << "\n";
 
-    /*  start of first record */
-    /*  There's a better way of casting the pointer apparently */
+    /*  start of last record */
     spikesStart =  (char *)openMapSource.data();
+    numStart = 0;
     /*  end of last record */
     spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
-    spikesMid = spikesStart;
-    std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
+    numEnd = (openMapSource.size()/sizeofstruct -1);
 
-    while ( true )
+    sizediff = spikesEnd - spikesStart;
+    numdiff = numEnd - numStart
+    std::cout << "Number of records in this file: " << (sizediff)/sizeofstruct << "\n";
+
+    while( sizediff > 0)
     {
-        /*  Simple check */
-        if (spikesStart > spikesEnd) return found;
+        currentSpike = spikesStart;
+        step = (sizediff/2);
+        step -= step%sizeofstruct;
 
-        spikesMid = spikesStart + ((spikesEnd - spikesStart)/2);
-        /*  Find the start of a record since spikeCurrent may not always point
-         *  to the beginning of a record */
-        char *currentSpike = (spikesMid - ((spikesMid - spikesStart) % sizeofstruct));
-        struct spikeEvent_type *currentRecord = NULL;
+        currentSpike += step;
         currentRecord = (struct spikeEvent_type *)currentSpike;
+        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at " << currentSpike - spikesStart<< "\n";
 
-
-#ifdef  DEBUG_BIN_SEARCH
-        std::cout << "Data mid at index: " <<  spikesMid - spikesStart << "\n";
-        std::cout << "Current spike record is at index: " << currentSpike - spikesStart << "\n";
-        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
-        if (found != NULL)
-        {
-            struct spikeEvent_type *currentFound = NULL;
-            currentFound = (struct spikeEvent_type *)found;
-            std::cout << "Current found value is: " << (*currentFound).time << "\t" << (*currentFound).neuronID << "\n";
-        }
-#endif     /* -----  DEBUG_BIN_SEARCH  ----- */
-
-        if (currentRecord->time == timeToCompare)
-        {
-            std::cout << "*** FOUND VALUE ***" << "\n";
-            found = currentSpike;
-            spikesEnd = currentSpike - sizeofstruct;
-        }
         if (currentRecord->time < timeToCompare)
         {
-            spikesStart = currentSpike + sizeofstruct;
+            spikesStart = ++currentSpike;
+            sizediff -= step + 1;
         }
-        if(currentRecord->time > timeToCompare)
-        {
-            spikesEnd = currentSpike - sizeofstruct;
-        }
+        else
+            sizediff = step;
     }
-    return found;
-}		/* -----  end of function binary_search_first  ----- */
+
+    currentRecord = (struct spikeEvent_type *)spikesStart;
+    std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
+    return spikesStart;
+}		/* -----  end of function binary_lower_bound  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -326,27 +287,34 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
     std::cout << "[TARDIS] Thread " << std::this_thread::get_id() << " working on it, Sir!" << "\n";
     for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
     {
-        char * chunk_start = binary_search_first(timeToFly - 1., std::ref(dataMapsE[i]));
-        char * chunk_end = binary_search_last(timeToFly, std::ref(dataMapsE[i]));
-        char * chunkit = chunk_start;
-        while (chunkit <= chunk_end)
+        char * chunk_start = binary_lower_bound(timeToFly - 1., std::ref(dataMapsE[i]));
+        char * chunk_end = binary_upper_bound(timeToFly, std::ref(dataMapsE[i]));
+        char * chunkit = NULL;
+        if (chunk_end - chunk_start > 0)
         {
-            struct spikeEvent_type *buffer;
-            buffer = (struct spikeEvent_type *)chunkit;
-            neuronsE.emplace_back((*buffer).neuronID);
-            chunkit += sizeof(struct spikeEvent_type);
+            chunkit = chunk_start;
+            while (chunkit <= chunk_end)
+            {
+                struct spikeEvent_type *buffer;
+                buffer = (struct spikeEvent_type *)chunkit;
+                neuronsE.emplace_back((*buffer).neuronID);
+                chunkit += sizeof(struct spikeEvent_type);
 
+            }
         }
 
-        chunk_start = binary_search_first(timeToFly - 1., std::ref(dataMapsI[i]));
-        chunk_end = binary_search_last(timeToFly, std::ref(dataMapsI[i]));
-        chunkit = chunk_start;
-        while (chunkit <= chunk_end)
+        chunk_start = binary_lower_bound(timeToFly - 1., std::ref(dataMapsI[i]));
+        chunk_end = binary_upper_bound(timeToFly, std::ref(dataMapsI[i]));
+        if (chunk_end - chunk_start > 0)
         {
-            struct spikeEvent_type *buffer;
-            buffer = (struct spikeEvent_type *)chunkit;
-            neuronsI.emplace_back((*buffer).neuronID);
-            chunkit += sizeof(struct spikeEvent_type);
+            chunkit = chunk_start;
+            while (chunkit <= chunk_end)
+            {
+                struct spikeEvent_type *buffer;
+                buffer = (struct spikeEvent_type *)chunkit;
+                neuronsI.emplace_back((*buffer).neuronID);
+                chunkit += sizeof(struct spikeEvent_type);
+            }
         }
 
     }
