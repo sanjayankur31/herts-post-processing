@@ -99,21 +99,27 @@ std::vector<double>
 calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage_times)
 {
     /*  Intervals after the recall stimulus that I want to graph at */
-    float graphing_intervals[11] = {-1., -0.5, -0.2, -0.1, -0.05,  0., 0.05, 0.1, 0.2, 0.5, 1};
+    float graphing_intervals[17] = {-.9, -0.5, -0.2, -0.1, -0.05,  0., 0.05, 0.1, 0.2, 0.5, 1., 2., 3., 4., 5., 6., 7.};
     std::vector<double> graphing_times;
     double times = 0;
+    /*  Initial stimulus and stabilisation */
     times = stage_times[0] + stage_times[1];
 
     for (unsigned int i = 1; i <= num_pats; ++i ) {
+        /*  pattern strengthening and pattern stabilisation */
         times += (stage_times[2] + stage_times[3]);
 
         for (unsigned int k = 1; k <= i; ++k)
         {
-            times += (stage_times[4] + stage_times[5]);
+            /*  Recall stimulus given */
+            times += stage_times[4];
 
+            /*  calculate my plotting intervals */
             for (int j = 0; j < (int)(sizeof(graphing_intervals)/sizeof(float)); j += 1 ) {
                 graphing_times.push_back(times+graphing_intervals[j]);
             }
+            /*  Recall check time added */
+            times += stage_times[5];
         }
     }
     std::sort(graphing_times.begin(), graphing_times.end());
