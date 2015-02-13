@@ -31,7 +31,7 @@
 #include <ctime>
 #include <cmath>
 
-#define TARDIS 1
+//#define DEBUG 0
 
 namespace po = boost::program_options;
 
@@ -40,6 +40,14 @@ struct spikeEvent_type
 {
     double time;
     unsigned int neuronID;
+};
+
+struct SNR
+{
+
+    double SNR;
+    double mean;
+    double std;
 };
 
 struct param
@@ -119,18 +127,19 @@ calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage
  *  Description:  
  * =====================================================================================
  */
-    double
+    struct SNR
 getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseRates )
 {
+    struct SNR snr;
     unsigned int sum_patterns = std::accumulate(patternRates.begin(), patternRates.end(),0.0);
-    double mean_patterns = sum_patterns/patternRates.size();
+    snr.mean = sum_patterns/patternRates.size();
 
     double sq_diff = 0.;
     std::for_each(patternRates.begin(), patternRates.end(), [&] (const double d) {
-            sq_diff += pow((d - mean_patterns),2);
+            sq_diff += pow((d - snr.mean),2);
             });
 
-    double std_patterns = sqrt(sq_diff/(patternRates.size() -1));
+    snr.std = sqrt(sq_diff/(patternRates.size() -1));
 
     unsigned int sum_noises = std::accumulate(noiseRates.begin(), noiseRates.end(),0.0);
     double mean_noises = sum_noises/noiseRates.size();
@@ -142,7 +151,7 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
 
     double std_noises = sqrt(sq_diff/(noiseRates.size() -1));
 
-    double snr = ((2.*pow((mean_patterns - mean_noises),2))/(pow(std_patterns,2) + pow(std_noises,2)));
+    snr.SNR = ((2.*pow((snr.mean - mean_noises),2))/(pow(snr.std,2) + pow(std_noises,2)));
 
     return snr;
 }		/* -----  end of function getSNR  ----- */
@@ -156,46 +165,72 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
     char *
 binary_upper_bound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
-    std::cout << "Finding last of " << timeToCompare << "\n";
     char *spikesStart = NULL;
-    char *spikesEnd = NULL;
+    unsigned long int numStart = 0;
+    unsigned long int numEnd = 0;
     char *currentSpike = NULL;
-    int sizediff = 0;
-    int step = 0;
-    int sizeofstruct = sizeof(struct spikeEvent_type);
+    unsigned long int numCurrent = 0;
+    unsigned long int numdiff = 0;
+    unsigned long int step = 0;
+    unsigned long int sizeofstruct = sizeof(struct spikeEvent_type);
     struct spikeEvent_type *currentRecord = NULL;
 
-    std::cout << "Struct size is: " << sizeofstruct << "\n";
 
     /*  start of last record */
     spikesStart =  (char *)openMapSource.data();
+    numStart = 0;
     /*  end of last record */
+    numEnd = (openMapSource.size()/sizeofstruct -1);
+
+    /*  Number of structs */
+
+    numdiff = numEnd - numStart;
+#ifdef DEBUG
+    std::cout << "Finding last of " << timeToCompare << "\n";
+    unsigned long int sizediff = 0;
+    char *spikesEnd = NULL;
     spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
     sizediff = spikesEnd - spikesStart;
-    std::cout << "Number of records in this file: " << (sizediff)/sizeofstruct << "\n";
+    std::cout << "Struct size is: " << sizeofstruct << "\n";
+    std::cout << "Char size is: " << sizeof(char)  << "\n";
+    std::cout << "size of int is: " << sizeof(int)  << "\n";
+    std::cout << "Number of records in this file: " << (openMapSource.size() - sizeofstruct)/sizeofstruct << "\n";
+    std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
+    printf("With printf subtraction %zu\n",(spikesEnd - spikesStart));
+    std::cout << "Proper subtraction : " << (spikesEnd - spikesStart) << "\n";
+    std::cout << "sizediff : " << sizediff << "\n";
+    printf("With printf sizediff %zu\n",sizediff);
+    std::cout << "multiplier " << (spikesEnd - spikesStart)/sizediff << "\n";
+    std::cout << "Number of struct records in this file: " << numdiff << "\n";
+#endif
 
-    while( sizediff > 0)
+    while( numdiff > 0)
     {
-        currentSpike = spikesStart;
-        step = (sizediff/2);
-        step -= step%sizeofstruct;
+        numCurrent = numStart;
+        step = (numdiff/2);
 
-        currentSpike += step;
+        numCurrent += step;
+        currentSpike = spikesStart + numCurrent * sizeofstruct;
         currentRecord = (struct spikeEvent_type *)currentSpike;
-        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at " << currentSpike - spikesStart<< "\n";
+#ifdef DEBUG
+        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at line" << numCurrent << "\n";
+#endif
 
         if (!(timeToCompare < currentRecord->time))
         {
-            spikesStart = ++currentSpike;
-            sizediff -= step + 1;
+            numStart = ++numCurrent;
+            numdiff -= step + 1;
         }
         else
-            sizediff = step;
+            numdiff = step;
     }
 
-    currentRecord = (struct spikeEvent_type *)spikesStart;
+    currentSpike = spikesStart + (numStart * sizeofstruct);
+    currentRecord = (struct spikeEvent_type *)currentSpike;
+#ifdef DEBUG
     std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
-    return spikesStart;
+#endif
+    return currentSpike;
 }		/* -----  end of function binary_upper_bound  ----- */
 
 
@@ -208,37 +243,35 @@ binary_upper_bound (double timeToCompare, boost::iostreams::mapped_file_source &
     char *
 binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
-    std::cout << "Finding first of " << timeToCompare << "\n";
     char *spikesStart = NULL;
     unsigned long int numStart = 0;
-    char *spikesEnd = NULL;
     unsigned long int numEnd = 0;
     char *currentSpike = NULL;
     unsigned long int numCurrent = 0;
-/*     int sizediff = 0;
- */
-    unsigned long int sizediff = 0;
     unsigned long int numdiff = 0;
     unsigned long int step = 0;
     unsigned long int sizeofstruct = sizeof(struct spikeEvent_type);
     struct spikeEvent_type *currentRecord = NULL;
 
-    std::cout << "Struct size is: " << sizeofstruct << "\n";
-    std::cout << "Char size is: " << sizeof(char)  << "\n";
-    std::cout << "size of int is: " << sizeof(int)  << "\n";
 
     /*  start of last record */
     spikesStart =  (char *)openMapSource.data();
     numStart = 0;
     /*  end of last record */
-    spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
+    numEnd = (openMapSource.size()/sizeofstruct -1);
 
     /*  Number of structs */
-    numEnd = (openMapSource.size()/sizeofstruct -1);
-    /*  Number of bytes */
-    sizediff = spikesEnd - spikesStart;
-
     numdiff = numEnd - numStart;
+
+#ifdef DEBUG
+    std::cout << "Finding first of " << timeToCompare << "\n";
+    unsigned long int sizediff = 0;
+    char *spikesEnd = NULL;
+    spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
+    sizediff = spikesEnd - spikesStart;
+    std::cout << "Struct size is: " << sizeofstruct << "\n";
+    std::cout << "Char size is: " << sizeof(char)  << "\n";
+    std::cout << "size of int is: " << sizeof(int)  << "\n";
     std::cout << "Number of records in this file: " << (openMapSource.size() - sizeofstruct)/sizeofstruct << "\n";
     std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
     printf("With printf subtraction %zu\n",(spikesEnd - spikesStart));
@@ -247,6 +280,7 @@ binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &
     printf("With printf sizediff %zu\n",sizediff);
     std::cout << "multiplier " << (spikesEnd - spikesStart)/sizediff << "\n";
     std::cout << "Number of struct records in this file: " << numdiff << "\n";
+#endif
 
     while( numdiff > 0)
     {
@@ -256,7 +290,9 @@ binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &
         numCurrent += step;
         currentSpike = spikesStart + numCurrent * sizeofstruct;
         currentRecord = (struct spikeEvent_type *)currentSpike;
+#ifdef DEBUG
         std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at line" << numCurrent << "\n";
+#endif
 
         if (currentRecord->time < timeToCompare)
         {
@@ -269,7 +305,9 @@ binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &
 
     currentSpike = spikesStart + (numStart * sizeofstruct);
     currentRecord = (struct spikeEvent_type *)currentSpike;
+#ifdef DEBUG
     std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
+#endif
     return currentSpike;
 }		/* -----  end of function binary_lower_bound  ----- */
 
@@ -279,7 +317,6 @@ binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &
  *  Description:  
  * =====================================================================================
  */
-#ifdef TARDIS
     void
 tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vector<boost::iostreams::mapped_file_source> &dataMapsI, std::vector<std::vector<unsigned int> >& patterns, std::vector<std::vector <unsigned int> >& recalls, double timeToFly, struct param parameters)
 {
@@ -300,11 +337,14 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
         recall_neurons_rate.emplace_back(std::vector<unsigned int>());
     }
 
+#ifdef DEBUG
     std::cout << "[TARDIS] Thread " << std::this_thread::get_id() << " working on it, Sir!" << "\n";
+#endif
+    /*  Fill up my vectors with neurons that fired in this period */
     for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
     {
+        /*  Excitatory */
         char * chunk_start = binary_lower_bound(timeToFly - 1., std::ref(dataMapsE[i]));
-        return;
         char * chunk_end = binary_upper_bound(timeToFly, std::ref(dataMapsE[i]));
         char * chunkit = NULL;
         if (chunk_end - chunk_start > 0)
@@ -314,12 +354,18 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
             {
                 struct spikeEvent_type *buffer;
                 buffer = (struct spikeEvent_type *)chunkit;
-                neuronsE.emplace_back((*buffer).neuronID);
+                neuronsE.emplace_back(buffer->neuronID);
                 chunkit += sizeof(struct spikeEvent_type);
 
             }
         }
+        else
+        {
+            std::cout << timeToFly << " not found in E file "  << i << "!\n";
+            return;
+        }
 
+        /*  Inhibitory */
         chunk_start = binary_lower_bound(timeToFly - 1., std::ref(dataMapsI[i]));
         chunk_end = binary_upper_bound(timeToFly, std::ref(dataMapsI[i]));
         if (chunk_end - chunk_start > 0)
@@ -329,9 +375,14 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
             {
                 struct spikeEvent_type *buffer;
                 buffer = (struct spikeEvent_type *)chunkit;
-                neuronsI.emplace_back((*buffer).neuronID);
+                neuronsI.emplace_back(buffer->neuronID);
                 chunkit += sizeof(struct spikeEvent_type);
             }
+        }
+        else
+        {
+            std::cout << timeToFly << " not found in I file "  << i << "!\n";
+            return;
         }
 
     }
@@ -339,6 +390,7 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
     std::sort(neuronsE.begin(), neuronsE.end());
     std::sort(neuronsI.begin(), neuronsI.end());
 
+    /*  Get frequencies of inhibitory neurons */
     std::vector<unsigned int>::iterator search_begin = neuronsI.begin();
     for(unsigned int i = 1; i <= parameters.NI; ++i)
     {
@@ -352,6 +404,7 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
 
 
 
+    /* Get frequencies of excitatory neurons */
     search_begin = neuronsE.begin();
     for(unsigned int i = 1; i <= parameters.NE; ++i)
     {
@@ -361,24 +414,29 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
 
         for (unsigned int j = 0; j < parameters.num_pats; j++)
         {
+            /*  It's part of the pattern */
             if(pattern_neurons_rate[j].size() != patterns[j].size() && std::binary_search(patterns[j].begin(), patterns[j].end(), i))
             {
                 pattern_neurons_rate[j].emplace_back(rate);
             }
+            /*  It's not in the pattern and therefore a noise neuron */
             else
             {
                 noise_neurons_rate[j].emplace_back(rate);
             }
+            /* It's a recall neuron - not using this at the moment */
             if(recall_neurons_rate[j].size() != recalls[j].size() && std::binary_search(recalls[j].begin(), recalls[j].end(), i))
             {
                 recall_neurons_rate[j].emplace_back(rate);
             }
         }
+        /*  All E neurons */
         neuronsE_rate.emplace_back(rate);
     }
 
     /*  We have excitatory firing rate of all, pattern and recall neurons */
     /*  Multi line files for histograms and min max ranges */
+    /*  Excitatory multiline */
     converter.str("");
     converter.clear();
     converter << parameters.output_file << "-" << std::to_string(timeToFly) << ".e.rate-multiline";
@@ -387,6 +445,7 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
         neuronsE_multiline << *it << "\n";
     neuronsE_multiline.close();
 
+    /*  Inhibitory multiline */
     converter.str("");
     converter.clear();
     converter << parameters.output_file << "-" << std::to_string(timeToFly) << ".i.rate-multiline";
@@ -394,6 +453,27 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
     for (std::vector<unsigned int>::iterator it = neuronsI_rate.begin(); it != neuronsI_rate.end(); ++it)
         neuronsI_multiline << *it << "\n";
     neuronsI_multiline.close();
+
+    for(unsigned int i = 0; i < parameters.num_pats; ++i)
+    {
+        /*  Multiline for pattern neurons */
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "-" << std::to_string(timeToFly) << "-" << std::setw(8)  << std::setfill('0') << std::to_string(i+1) << ".pattern.rate.multiline";
+        std::ofstream patternNeurons_multiline(converter.str());
+        for (std::vector<unsigned int>::iterator it = pattern_neurons_rate[i].begin(); it != pattern_neurons_rate[i].end(); ++it)
+            patternNeurons_multiline << *it << "\n";
+        patternNeurons_multiline.close();
+
+        /*  Multiline for noise neurons */
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "-" << std::to_string(timeToFly) << "-" << std::setw(8)  << std::setfill('0') << std::to_string(i+1) << ".noise.rate.multiline";
+        std::ofstream noiseNeurons_multiline(converter.str());
+        for (std::vector<unsigned int>::iterator it = recall_neurons_rate[i].begin(); it != recall_neurons_rate[i].end(); ++it)
+            noiseNeurons_multiline << *it << "\n";
+        noiseNeurons_multiline.close();
+    }
 
     /*  Combined matrix */
     converter.str("");
@@ -431,19 +511,22 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
     }
     neurons_matrix_stream.close();
 
+    struct SNR snr;
     for (unsigned int j = 0; j < parameters.num_pats; j++)
     {
+        /*  SNR matrix */
         converter.str("");
         converter.clear();
-        converter << parameters.output_file << "-" << std::to_string(timeToFly) << "-" << std::setw(8)  << std::setfill('0') << std::to_string(j+1) << "-pattern-signal-noise-ratio.matrix";
+        converter << parameters.output_file << "-" << std::to_string(timeToFly) << "-" << std::setw(8)  << std::setfill('0') << std::to_string(j+1) << ".pattern-signal-noise-ratio.matrix";
         std::ofstream pattern_snr (converter.str());
-        pattern_snr << timeToFly << "\t" << getSNR(pattern_neurons_rate[j], noise_neurons_rate[j]);
+        snr = getSNR(pattern_neurons_rate[j], noise_neurons_rate[j]);
+        pattern_snr << timeToFly << "\t" << snr.SNR << "\t" << snr.mean << "\t" << snr.std << "\n";
         pattern_snr.close();
 
-
+        /*  Pattern matrix */
         converter.str("");
         converter.clear();
-        converter << parameters.output_file << "-" << std::to_string(timeToFly) << "-" << std::setw(8)  << std::setfill('0') << std::to_string(j+1) << "-pattern.matrix";
+        converter << parameters.output_file << "-" << std::to_string(timeToFly) << "-" << std::setw(8)  << std::setfill('0') << std::to_string(j+1) << ".pattern.matrix";
 
         /* I could pad the matrix if it isn't rectangular in shape. I
          * won't, though. 
@@ -466,9 +549,10 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
 
     /*  Not printing out recall neurons for the time being */
 
+#ifdef DEBUG
     std::cout << "[TARDIS] Thread " << std::this_thread::get_id() << " reporting on conclusion, Sir!" << "\n";
-}		/* -----  end of function tardis  ----- */
 #endif
+}		/* -----  end of function tardis  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -520,7 +604,9 @@ getPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std::
             patterns[i].emplace_back(neuronID);
         ifs.close();
         std::sort(patterns[i].begin(), patterns[i].end());
+#ifdef DEBUG
         std::cout << "Items loaded and sorted in pattern number " << i << " is " << patterns[i].size() << "\n";
+#endif
 
         converter.str("");
         converter.clear();
@@ -532,10 +618,12 @@ getPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std::
             recalls[i].emplace_back(neuronID);
         ifs.close();
         std::sort(recalls[i].begin(), recalls[i].end());
+#ifdef DEBUG
         std::cout << "Items loaded and sorted in recall number " << i << " is " << recalls[i].size() << "\n";
+#endif
     }
     clock_t clock_end = clock();
-    std::cout << "Patterns and recalls read in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
+    std::cout << patterns.size() << " patterns and " << recalls.size() << " recalls read in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
 
 }		/* -----  end of function getPatternsAndRecalls  ----- */
 
@@ -560,8 +648,6 @@ main(int ac, char* av[])
     std::ostringstream converter;
 
     global_clock_start = clock();
-
-
     try {
 
         po::options_description cli("Command line options");
@@ -622,12 +708,17 @@ main(int ac, char* av[])
 
     /*  At the most, use 20 threads, other wise WAIT */
     doctors_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
+    std::cout << "Maximum number of threads: " << doctors_max << "\n";
 
     /*  Calculate the times when I need to generate my graphs */
     graphing_times = calculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
+#ifdef DEBUG
     for (std::vector<double>::iterator it =  graphing_times.begin(); it != graphing_times.end(); ++it)
         std::cout << *it << "\t";
     std::cout << "\n";
+#endif
+    std::cout << "Getting files for " << graphing_times.size() << " snapshots." << "\n";
+
 
     /*  Get my patterns and recalls into vectors - these files are relatively
      *  minuscule */
@@ -641,19 +732,23 @@ main(int ac, char* av[])
         converter.str("");
         converter.clear();
         converter << parameters.output_file << "." << i << "_e.ras";
+#ifdef DEBUG
         std::cout << "Loading e file: " << converter.str() << "\n";
+#endif
         raster_data_source_E.emplace_back(boost::iostreams::mapped_file_source());
         raster_data_source_E[i].open(converter.str());
 
         converter.str("");
         converter.clear();
         converter << parameters.output_file << "." << i << "_i.ras";
+#ifdef DEBUG
         std::cout << "Loading i file: " << converter.str() << "\n";
+#endif
         raster_data_source_I.emplace_back(boost::iostreams::mapped_file_source());
         raster_data_source_I[i].open(converter.str());
     }
     clock_end = clock();
-    std::cout << "Time taken to memory map my files is: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
+    std::cout << raster_data_source_E.size() <<  " E and " << raster_data_source_I.size() << " I files mapped in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
 
 
     clock_start = clock();
