@@ -175,7 +175,7 @@ function run ()
         (if [[ "$cleandata" == "temp" ]]
         then
             echo "Deleting all tempfiles. Leaving graphs."
-            rm -fv *-allmerged *-multiline *-matrix *-single *readytomerge *.e.ras *.i.ras *.combined.matrix OVERALL-PLOTTED RAS-COMBINED
+            rm -fv *-allmerged *-multiline *matrix *-single *readytomerge *.e.ras *.i.ras *.combined.matrix OVERALL-PLOTTED RAS-COMBINED
         elif [[ "$cleandata" == "all" ]]
         then
             echo "Deleting all generated files including graphs."
@@ -410,13 +410,13 @@ function generatesnrgraphs ()
     for i in `seq 1 $numpats`;
     do
         snrfilename=$(printf "$timestamp-%08d-pattern-signal-noise-ratio.combined.matrix" $i)
-        gnuplotcommand+="set yrange[0:50]; set xlabel \"time\"; set ylabel \"snr\"; set title \"pattern ""$i""\"; plot \"""$snrfilename""\" pt 7 ; "
+        gnuplotcommand+="set yrange[0:50]; set xlabel \"time\"; set ylabel \"snr\"; set title \"pattern ""$i""\"; plot \"""$snrfilename""\" pt 7 using 1:2 title \"snr\", \"""$snrfilename""\" pt 7 using 1:3 title \"mean\", \"""$snrfilename""\" pt 7 using 1:4 title \"std\"; "
     done
     gnuplotcommand+="unset multiplot;"
     gnuplot -e "$gnuplotcommand" &
 
     echo "*********** Patterns at time $timeofpattern generated *****************"
-    gnuplot -e "set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"SNR-master.png\";set xlabel \"time\"; set ylabel \"snr\"; set title \"SNR ALL\"; plot \"Master-signal-noise-ratio.matrix\" with lines" &
+    gnuplot -e "set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"SNR-master.png\";set xlabel \"time\"; set ylabel \"snr\"; set title \"SNR ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:2 title \"snr\", \"Master-signal-noise-ratio.matrix\" using 1:3 title \"mean\", \"Master-signal-noise-ratio.matrix\" using 1:4 title \"std\"" &
     echo "*********** Master SNR graph generated *****************"
 }
 
