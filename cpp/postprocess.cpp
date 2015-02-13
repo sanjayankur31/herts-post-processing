@@ -711,7 +711,11 @@ main(int ac, char* av[])
     std::cout << "Maximum number of threads: " << doctors_max << "\n";
 
     /*  Calculate the times when I need to generate my graphs */
+    /*  Remove duplicates */
     graphing_times = calculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
+    graphing_times.insert(graphing_times.end(), parameters.plot_times.begin(), parameters.plot_times.end());
+    std::sort(graphing_times.begin(), graphing_times.end());
+    graphing_times.erase(std::unique (graphing_times.begin(), graphing_times.end()), graphing_times.end());
 #ifdef DEBUG
     for (std::vector<double>::iterator it =  graphing_times.begin(); it != graphing_times.end(); ++it)
         std::cout << *it << "\t";
