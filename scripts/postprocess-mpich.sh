@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Copyright 2010 Ankur Sinha 
-# Author: Ankur Sinha <sanjay DOT ankur AT gmail DOT com> 
+# Copyright 2010 Ankur Sinha
+# Author: Ankur Sinha <sanjay DOT ankur AT gmail DOT com>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
-# 
+#
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
@@ -21,7 +21,7 @@
 # All the post processing required to generate graphs for my simulation
 #
 
-# the function "round()" was taken from 
+# the function "round()" was taken from
 # http://stempell.com/2009/08/rechnen-in-bash/
 
 # the round function:
@@ -49,11 +49,12 @@ function usage ()
     -d  directory to work in
     -s  plot surface plots
     -o  plot overall time plot
-    -S  plot surface plots - do not recollect or check data - assumes data is already processed in R
-    -O  plot overall time plot only - does not recollect or check data - assumes data is already processed in R
+    -S  plot surface plots - do not recollect or check data - assumes data is already processed
+    -O  plot overall time plot only - does not recollect or check data - assumes data is already processed
     -c  clean dir of all generated text files
     -C  clean dir of all generated files including graphs
     -t  plot signal to noise ratio files
+    -T  plot signal to noise ratio files - does not recollect or check data - assumes data is already processed
     -h  print this message and exit
 
     NOTE: Must use flags repeatedly for bash getopts.
@@ -64,7 +65,7 @@ EOF
 
 function run ()
 {
-    while getopts "hd:sSoOcCpt" OPTION
+    while getopts "hd:sSoOcCptT" OPTION
     do
         case $OPTION in
             h)
@@ -101,6 +102,11 @@ function run ()
                 ;;
             t)
                 snrgraphs="yes"
+                collectsnrdata="yes"
+                ;;
+            T)
+                snrgraphs="yes"
+                collectsnrdata="no"
                 ;;
             ?)
                 usage
@@ -172,14 +178,22 @@ function run ()
         fi
         ) &
         wait
-        (if [[ "$cleandata" == "temp" ]]
+        (
+        if [[ "$cleandata" == "temp" ]] || [[ "$cleandata" == "all" ]]
         then
             echo "Deleting all tempfiles. Leaving graphs."
-            rm -fv *-allmerged *-multiline *matrix *-single *readytomerge *.e.ras *.i.ras *.combined.matrix OVERALL-PLOTTED RAS-COMBINED
+            for ext in "*-allmerged"  "*multiline"  "*matrix"  "*-single"  "*readytomerge"  "*.e.ras"  "*.i.ras"  "*.combined.matrix"  "OVERALL-PLOTTED"  "RAS-COMBINED";
+            do
+
+                (
+                find . -name "$ext" -execdir rm -f '{}' \;
+                ) &
+            done
+            wait
         elif [[ "$cleandata" == "all" ]]
         then
             echo "Deleting all generated files including graphs."
-            rm -fv *-allmerged *-multiline *-matrix *-single *readytomerge *.e.ras *.i.ras *.combined.matrix OVERALL-PLOTTED *.png RAS-COMBINED
+            rm -fv *.png
         fi
         if [ "$patterngraphs" == "yes" ]
         then
@@ -194,16 +208,26 @@ function run ()
             done
         fi
         ) &
-        if [ "$snrgraphs" == "yes" ]
-        then 
+        wait
+
+        (
+        if [ "$snrgraphs" == "yes" ] && [ "$collectsnrdata" == "yes" ]
+        then
             echo "**** Processing SNR information ****"
             numpats=$(grep num_pats simulation_config.cfg | sed "s/.*=//")
-            numcols=2
-            numrows=$(round "$numpats/2 +1" 0)
             collatesnrdata
             generatesnrgraphs
             echo "**** Processed SNR information ****"
         fi
+        if [ "$snrgraphs" == "yes" ] && [ "$collectsnrdata" == "no" ]
+        then
+            echo "**** Processing SNR information ****"
+            numpats=$(grep num_pats simulation_config.cfg | sed "s/.*=//")
+            generatesnrgraphs
+            echo "**** Processed SNR information ****"
+        fi
+        )
+        wait
 
     popd
     # Not staging to git. Appears to cause some issue - images aren't added somehow.
@@ -216,7 +240,7 @@ function collatesnrdata ()
     echo "**** Collecting snr data ****"
     for i in `seq 1 $numpats`;
     do
-        sort -g -m $(printf "*%08d-pattern-signal-noise-ratio.matrix" $i) > $(printf "$timestamp-%08d-pattern-signal-noise-ratio.combined.matrix" $i)
+        sort -g -m $(printf "*%08d.pattern-signal-noise-ratio.matrix" $i) > $(printf "$timestamp-%08d.pattern-signal-noise-ratio.combined.matrix" $i)
     done
 
     sort -g -m *pattern-signal-noise-ratio.combined.matrix > Master-signal-noise-ratio.matrix
@@ -242,7 +266,7 @@ function sanitycheck()
 {
     echo "Checking rows and columns in generated files."
     (
-    echo "For Excitatory files" 
+    echo "For Excitatory files"
     finalfile="$datafile"".e.rate-multiline"
     echo "** $finalfile **"
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
@@ -250,7 +274,7 @@ function sanitycheck()
     ) &
 
     (
-    echo "For Inhibitory files" 
+    echo "For Inhibitory files"
     finalfile="$datafile"".i.rate-multiline"
     echo "** $finalfile **"
     echo "Number of lines: `wc -l $finalfile | cut -d ' ' -f 1`"
@@ -273,7 +297,7 @@ function collectoveralldata()
     # remove the time from the second file onwards only. Leave it be in the first file for plotting
     # Excitatory first
     # It's OK to use rate output for average rates since order doesn't matter.
-    ( 
+    (
     echo "Processing excitatory rate files ..."
     let j=0
     finalfile="$timestamp"".e.rate-allmerged"
@@ -326,7 +350,7 @@ function collectoveralldata()
     for exts in "ie_stdp.weightinfo" "ii_static.weightinfo" "ee_static.weightinfo" "ei_static.weightinfo" "exte_static.weightinfo"
     do
         wildcard="*_""$exts"
-        if ls $wildcard 1> /dev/null 2>&1; 
+        if ls $wildcard 1> /dev/null 2>&1;
         then
             let j=0
             finalfile="$timestamp"".""$exts""-allmerged"
@@ -375,7 +399,7 @@ function sanitycheckoverall()
     for exts in "ie_stdp.weightinfo" "ii_static.weightinfo" "ee_static.weightinfo" "ei_static.weightinfo" "exte_static.weightinfo"
     do
         wildcard="*_""$exts"
-        if ls $wildcard 1> /dev/null 2>&1; 
+        if ls $wildcard 1> /dev/null 2>&1;
         then
             (
             finalfile="$timestamp"".""$exts""-allmerged"
@@ -401,23 +425,64 @@ function generatepatterngraphs ()
     gnuplotcommand+="unset multiplot;"
     gnuplot -e "$gnuplotcommand" &
     echo "*********** Patterns at time $timeofpattern generated *****************"
+
+    gnuplotcommand="set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"""$timeofpattern"".patterns-histograms.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
+
+    for i in `seq 1 $numpats`;
+    do
+        patternfilename="$timeofpattern""-""$(printf %08d $i)""-pattern.rate.multiline"
+        minPatternRate=$(sort -g "$patternfilename" | head -1)
+        maxPatternRate=$(sort -g "$patternfilename" | tail -1)
+        uniqValsPattern=$(uniq "$patternfilename" | wc -l)
+        binwidthPattern=$(echo "($maxPatternRate-$minPatternRate)/$uniqValsPattern" | bc -l)
+        gnuplotcommand+="set xrange [""$minPatternRate"":""$maxPatternRate""]; set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; binwidth=""$binwidthPattern""; bin(x,width)=width*floor(x/width)+width/2.0;  set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; plot \"""$patternfilename""\" using (bin(\$1,binwidth)):(1.0) smooth freq with boxes lc rgb \"blue\" t \"""$i""\"; "
+    done
+    gnuplotcommand+="unset multiplot;"
+    gnuplot -e "$gnuplotcommand" &
+    echo "*********** Pattern histgrams at time $timeofpattern generated *****************"
+
+    gnuplotcommand="set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"""$timeofpattern"".noises-histograms.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
+
+    for i in `seq 1 $numpats`;
+    do
+        noisefilename="$timeofpattern""-""$(printf %08d $i)""-noise.rate.multiline"
+        minNoiseRate=$(sort -g "$noisefilename" | head -1)
+        maxNoiseRate=$(sort -g "$noisefilename" | tail -1)
+        uniqValsNoise=$(uniq "$noisefilename" | wc -l)
+        binwidthNoise=$(echo "($maxNoiseRate-$minNoiseRate)/$uniqValsNoise" | bc -l)
+        gnuplotcommand+="set xrange [""$minNoiseRate"":""$maxNoiseRate""]; set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; binwidth=""$binwidthNoise""; bin(x,width)=width*floor(x/width)+width/2.0;  set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; plot \"""$noisefilename""\" using (bin(\$1,binwidth)):(1.0) smooth freq with boxes lc rgb \"red\" t \"""$i""\"; "
+    done
+    gnuplotcommand+="unset multiplot;"
+    gnuplot -e "$gnuplotcommand" &
+    echo "*********** Noise histgrams at time $timeofpattern generated *****************"
 }
 
 function generatesnrgraphs ()
 {
-    gnuplotcommand="set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"SNR.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"SNR\"; "
+    gnuplotcommand="set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"SNR.png\"; set multiplot layout ""$numpats"",1 title \"SNR\"; "
+    gnuplotcommand1="set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"MEAN.png\"; set multiplot layout ""$numpats"",1 title \"MEAN\"; "
+    gnuplotcommand2="set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"STD.png\"; set multiplot layout ""$numpats"",1 title \"STD\"; "
 
     for i in `seq 1 $numpats`;
     do
-        snrfilename=$(printf "$timestamp-%08d-pattern-signal-noise-ratio.combined.matrix" $i)
-        gnuplotcommand+="set yrange[0:50]; set xlabel \"time\"; set ylabel \"snr\"; set title \"pattern ""$i""\"; plot \"""$snrfilename""\" pt 7 using 1:2 title \"snr\", \"""$snrfilename""\" pt 7 using 1:3 title \"mean\", \"""$snrfilename""\" pt 7 using 1:4 title \"std\"; "
+        snrfilename=$(printf "$timestamp-%08d.pattern-signal-noise-ratio.combined.matrix" $i)
+        gnuplotcommand+="set yrange[0:]; set xlabel \"time\"; set ylabel \"SNR\"; set title \"pattern ""$i""\"; plot \"""$snrfilename""\" using 1:2; "
+        gnuplotcommand1+="set yrange[0:]; set xlabel \"time\"; set ylabel \"MEAN\"; set title \"pattern ""$i""\"; plot \"""$snrfilename""\"  using 1:3; "
+        gnuplotcommand2+="set yrange[0:]; set xlabel \"time\"; set ylabel \"STD\"; set title \"pattern ""$i""\"; plot \"""$snrfilename""\"  using 1:4; "
     done
     gnuplotcommand+="unset multiplot;"
+    gnuplotcommand1+="unset multiplot;"
+    gnuplotcommand2+="unset multiplot;"
     gnuplot -e "$gnuplotcommand" &
+    gnuplot -e "$gnuplotcommand1" &
+    gnuplot -e "$gnuplotcommand2" &
 
-    echo "*********** Patterns at time $timeofpattern generated *****************"
-    gnuplot -e "set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"SNR-master.png\";set xlabel \"time\"; set ylabel \"snr\"; set title \"SNR ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:2 title \"snr\", \"Master-signal-noise-ratio.matrix\" using 1:3 title \"mean\", \"Master-signal-noise-ratio.matrix\" using 1:4 title \"std\"" &
+    gnuplot -e "set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"SNR-master.png\";set xlabel \"time\"; set ylabel \"SNR\"; set title \"SNR ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:2" &
     echo "*********** Master SNR graph generated *****************"
+    gnuplot -e "set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"MEAN-master.png\";set xlabel \"time\"; set ylabel \"MEAN\"; set title \"MEAN ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:3" &
+    echo "*********** Master MEAN graph generated *****************"
+    gnuplot -e "set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"STD-master.png\";set xlabel \"time\"; set ylabel \"STD\"; set title \"STD ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:4" &
+    echo "*********** Master STD graph generated *****************"
 }
 
 function plotspecifictimeplots ()
@@ -436,7 +501,7 @@ function plotspecifictimeplots ()
     echo "maxIrate: $maxIrate"
     echo "minIrate: $minIrate"
     echo "binwidthI: $binwidthI"
-    
+
 
 
 
@@ -488,10 +553,10 @@ function plotoverallplots ()
     echo "Columns in STDP weights: $numberofcolsSTDP"
     wait
 
-    if ls *_ie_stdp.weightinfo 1> /dev/null 2>&1; 
+    if ls *_ie_stdp.weightinfo 1> /dev/null 2>&1;
     then
         if [[ `cmp rowsE.temp rowsI.temp` -ne 0 ]]
-        then 
+        then
             echo "Number of rows in E and I files aren't the same. Check input!"
             echo "E has $numberofrowsE rows while I has $numberofrowsI!"
         else
@@ -505,7 +570,7 @@ function plotoverallplots ()
     else
         echo "No weight files found, not plotting weights."
         if [[ "$numberofrowsE" -ne "$numberofrowsI" ]]
-        then 
+        then
             echo "Number of rows in E and I files aren't the same. Check input!"
             echo "E has $numberofrowsE rows while I has $numberofrowsI!"
         else
