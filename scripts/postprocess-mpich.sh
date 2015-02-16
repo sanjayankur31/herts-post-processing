@@ -162,11 +162,11 @@ function run ()
             if [[ ! -e "OVERALL-PLOTTED" ]]
             then
                 collectoveralldata
+                sanitycheckoverall
             else
                 echo "Processing seems to already have been done. Just replotting."
             fi
 
-            sanitycheckoverall
             plotoverallplots
             touch "OVERALL-PLOTTED"
         elif [[ "$overall" == "yes" ]] && [[ "$collectoveralldata" == "no" ]]
@@ -459,9 +459,9 @@ function generatepatterngraphs ()
 
 function generatesnrgraphs ()
 {
-    gnuplotcommand="set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"SNR.png\"; set multiplot layout ""$numpats"",1 title \"SNR\"; "
-    gnuplotcommand1="set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"MEAN.png\"; set multiplot layout ""$numpats"",1 title \"MEAN\"; "
-    gnuplotcommand2="set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"STD.png\"; set multiplot layout ""$numpats"",1 title \"STD\"; "
+    gnuplotcommand="set nokey; set grid; set view map; set xtics rotate 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"SNR.png\"; set multiplot layout ""$numpats"",1 title \"SNR\"; "
+    gnuplotcommand1="set nokey; set grid; set view map; set xtics rotate 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"MEAN.png\"; set multiplot layout ""$numpats"",1 title \"MEAN\"; "
+    gnuplotcommand2="set nokey; set grid; set view map; set xtics rotate 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,15120; set output \"STD.png\"; set multiplot layout ""$numpats"",1 title \"STD\"; "
 
     for i in `seq 1 $numpats`;
     do
@@ -477,11 +477,11 @@ function generatesnrgraphs ()
     gnuplot -e "$gnuplotcommand1" &
     gnuplot -e "$gnuplotcommand2" &
 
-    gnuplot -e "set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"SNR-master.png\";set xlabel \"time\"; set ylabel \"SNR\"; set title \"SNR ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:2" &
+    gnuplot -e "set nokey; set grid; set view map; set xtics rotate 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"SNR-master.png\";set xlabel \"time\"; set ylabel \"SNR\"; set title \"SNR ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:2" &
     echo "*********** Master SNR graph generated *****************"
-    gnuplot -e "set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"MEAN-master.png\";set xlabel \"time\"; set ylabel \"MEAN\"; set title \"MEAN ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:3" &
+    gnuplot -e "set nokey; set grid; set view map; set xtics rotate 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"MEAN-master.png\";set xlabel \"time\"; set ylabel \"MEAN\"; set title \"MEAN ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:3" &
     echo "*********** Master MEAN graph generated *****************"
-    gnuplot -e "set nokey; set grid; set view map; set xtics 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"STD-master.png\";set xlabel \"time\"; set ylabel \"STD\"; set title \"STD ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:4" &
+    gnuplot -e "set nokey; set grid; set view map; set xtics rotate 50; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 17280,480; set output \"STD-master.png\";set xlabel \"time\"; set ylabel \"STD\"; set title \"STD ALL\"; plot \"Master-signal-noise-ratio.matrix\" using 1:4" &
     echo "*********** Master STD graph generated *****************"
 }
 
@@ -563,7 +563,7 @@ function plotoverallplots ()
             echo "Rows in E/I files: `cat rowsE.temp`"
             rm rowsE.temp rowsI.temp -fv
             #Firing rate evolution throughout the simulation
-            gnuplot -e "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,80\" size 15120,15120 linewidth 2; set grid; set output \"""$timestamp"".timegraphwithweights.png\"; set size 1,1; set multiplot; set title \"Evolution of firing rates\"; set xlabel \"Time (s)\"; set ylabel \"Firing rates (Hz)\"; set origin 0.0, 0.5; set size 1,0.5; plot \"""$timestamp"".e.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsE""] column(col))/""$numberofcolsE"") lc rgb \"blue\" t \"Average Excitatory firing rate (Hz)\" with lines, \"""$timestamp"".i.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsI""] column(col))/""$numberofcolsI"") lc rgb \"red\" t \"Average Inhibitory Firing rate (Hz)\" with lines; set origin 0.0,0.0; set size 1,0.5; set ylabel \"Synaptic weight (nS)\"; set title \"Evolution of synapses\"; plot \"""$timestamp"".ie_stdp.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") lc rgb \"brown\" t \"Average IE (plastic)\" with lines, \"""$timestamp"".ii_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average II (static)\" with lines, \"""$timestamp"".ee_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average EE (static)\" with lines, \"""$timestamp"".ei_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EI (static)\" with lines, \"""$timestamp"".exte_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EXTE (static)\" with lines" &
+            gnuplot -e "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,80\" size 15120,15120 linewidth 2; set grid; set output \"""$timestamp"".timegraphwithweights.png\"; set size 1,1; set xtics rotate 250; set multiplot; set title \"Evolution of firing rates\"; set xlabel \"Time (s)\"; set ylabel \"Firing rates (Hz)\"; set origin 0.0, 0.5; set size 1,0.5; plot \"""$timestamp"".e.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsE""] column(col))/""$numberofcolsE"") lc rgb \"blue\" t \"Average Excitatory firing rate (Hz)\" with lines, \"""$timestamp"".i.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsI""] column(col))/""$numberofcolsI"") lc rgb \"red\" t \"Average Inhibitory Firing rate (Hz)\" with lines; set origin 0.0,0.0; set size 1,0.5; set ylabel \"Synaptic weight (nS)\"; set title \"Evolution of synapses\"; plot \"""$timestamp"".ie_stdp.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") lc rgb \"brown\" t \"Average IE (plastic)\" with lines, \"""$timestamp"".ii_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average II (static)\" with lines, \"""$timestamp"".ee_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average EE (static)\" with lines, \"""$timestamp"".ei_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EI (static)\" with lines, \"""$timestamp"".exte_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EXTE (static)\" with lines" &
 
             echo "Complete. Generated $timestamp.timegraphwithweights.png"
         fi
