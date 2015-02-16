@@ -102,6 +102,7 @@ calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage
     float graphing_intervals[19] = {-.9, -0.5, -0.2, -0.1, -0.05,  0., 0.05, 0.1, 0.2, 0.5, 1., 2., 3., 4., 5., 6., 7., 8., 9.};
     std::vector<double> graphing_times;
     double times = 0;
+    std::ofstream ofs("00-Recall-times.txt", std::ofstream::out);
     /*  Initial stimulus and stabilisation */
     times = stage_times[0] + stage_times[1];
 
@@ -113,6 +114,7 @@ calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage
         {
             /*  Recall stimulus given */
             times += stage_times[4];
+            ofs << times << "\t";
 
             /*  calculate my plotting intervals */
             for (int j = 0; j < (int)(sizeof(graphing_intervals)/sizeof(float)); j += 1 ) {
@@ -122,6 +124,8 @@ calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage
             times += stage_times[5];
         }
     }
+    ofs << "\n";
+    ofs.close();
     std::sort(graphing_times.begin(), graphing_times.end());
     return graphing_times;
 }		/* -----  end of function calculateTimeToPlotList  ----- */
