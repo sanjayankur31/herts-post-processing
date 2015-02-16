@@ -439,7 +439,7 @@ function generatepatterngraphs ()
     done
     gnuplotcommand+="unset multiplot;"
     gnuplot -e "$gnuplotcommand" &
-    echo "*********** Pattern histgrams at time $timeofpattern generated *****************"
+    echo "*********** Pattern histograms at time $timeofpattern generated *****************"
 
     gnuplotcommand="set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"""$timeofpattern"".noises-histograms.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
 
@@ -454,7 +454,7 @@ function generatepatterngraphs ()
     done
     gnuplotcommand+="unset multiplot;"
     gnuplot -e "$gnuplotcommand" &
-    echo "*********** Noise histgrams at time $timeofpattern generated *****************"
+    echo "*********** Noise histograms at time $timeofpattern generated *****************"
 }
 
 function generatesnrgraphs ()
