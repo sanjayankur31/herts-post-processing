@@ -99,7 +99,7 @@ std::vector<double>
 calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage_times)
 {
     /*  Intervals after the recall stimulus that I want to graph at */
-    float graphing_intervals[19] = {-.9, -0.5, -0.2, -0.1, -0.05,  0., 0.05, 0.1, 0.2, 0.5, 1., 2., 3., 4., 5., 6., 7., 8., 9.};
+    float graphing_intervals[6] = {-0.9, -0.5, 0., 0.5, 1., 5.};
     std::vector<double> graphing_times;
     double times = 0;
     std::ofstream ofs("00-Recall-times.txt", std::ofstream::out);
