@@ -55,6 +55,7 @@ function usage ()
     -C  clean dir of all generated files including graphs
     -t  plot signal to noise ratio files
     -T  plot signal to noise ratio files - does not recollect or check data - assumes data is already processed
+    -R  Delete all text files but not graphs
     -h  print this message and exit
 
     NOTE: Must use flags repeatedly for bash getopts.
@@ -65,7 +66,7 @@ EOF
 
 function run ()
 {
-    while getopts "hd:sSoOcCptT" OPTION
+    while getopts "hd:sSoOcCptTR" OPTION
     do
         case $OPTION in
             h)
@@ -96,6 +97,9 @@ function run ()
                 ;;
             C)
                 cleandata="all"
+                ;;
+            R)
+                cleantext="yes"
                 ;;
             p)
                 patterngraphs="yes"
@@ -182,7 +186,7 @@ function run ()
         if [[ "$cleandata" == "temp" ]] || [[ "$cleandata" == "all" ]]
         then
             echo "Deleting all tempfiles. Leaving graphs."
-            for ext in "*-allmerged"  "*multiline"  "*matrix"  "*-single"  "*readytomerge"  "*.e.ras"  "*.i.ras"  "*.combined.matrix"  "OVERALL-PLOTTED"  "RAS-COMBINED";
+            for ext in "*-allmerged"  "*multiline"  "*matrix"  "*-single"  "*readytomerge"  "*.e.ras"  "*.i.ras"  "*.combined.matrix"  "OVERALL-PLOTTED"  "RAS-COMBINED" "*netstate*"
             do
 
                 (
@@ -195,6 +199,19 @@ function run ()
             echo "Deleting all generated files including graphs."
             rm -fv *.png
         fi
+        if [ "$cleantext" == "yes" ]
+        then
+            echo "Deleting all text files but leaving graphs."
+            for ext in "*weighinfo*" "*.ras" "*rate" "*log"
+            do
+                (
+                find . -name "$ext" -execdir rm -f '{}' \;
+                ) &
+                wait
+            done
+        fi
+        ) &
+        (
         if [ "$patterngraphs" == "yes" ]
         then
             numpats=$(grep num_pats simulation_config.cfg | sed "s/.*=//")
