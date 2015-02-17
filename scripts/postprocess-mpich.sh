@@ -202,7 +202,7 @@ function run ()
         if [ "$cleantext" == "yes" ]
         then
             echo "Deleting all text files but leaving graphs."
-            for ext in "*weighinfo*" "*.ras" "*rate" "*log"
+            for ext in "*weightinfo*" "*.ras" "*rate" "*log"
             do
                 (
                 find . -name "$ext" -execdir rm -f '{}' \;
