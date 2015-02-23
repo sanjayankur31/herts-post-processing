@@ -91,12 +91,12 @@ GetFileSize(std::string filename)
 }
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  calculateTimeToPlotList
+ *         Name:  CalculateTimeToPlotList
  *  Description:  returns the sorted values
  * =====================================================================================
  */
 std::vector<double>
-calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage_times)
+CalculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage_times)
 {
     /*  Intervals after the recall stimulus that I want to graph at */
     float graphing_intervals[1] = {0.};
@@ -134,17 +134,29 @@ calculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage
     ofs.close();
     std::sort(graphing_times.begin(), graphing_times.end());
     return graphing_times;
-}		/* -----  end of function calculateTimeToPlotList  ----- */
+}		/* -----  end of function CalculateTimeToPlotList  ----- */
 
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  getSNR
+ *         Name:  GetChunks
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GetChunks ( <+argument_list+> )
+{
+    return <+return_value+>;
+}		/* -----  end of function GetChunks  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  PrintSNR
  *  Description:  
  * =====================================================================================
  */
     struct SNR
-getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseRates )
+PrintSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseRates )
 {
     struct SNR snr;
     unsigned int sum_patterns = std::accumulate(patternRates.begin(), patternRates.end(),0.0);
@@ -170,16 +182,16 @@ getSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
     snr.SNR = ((2.*pow((snr.mean - mean_noises),2))/(pow(snr.std,2) + pow(std_noises,2)));
 
     return snr;
-}		/* -----  end of function getSNR  ----- */
+}		/* -----  end of function PrintSNR  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  binary_upper_bound
+ *         Name:  BinaryUpperBound
  *  Description:  Last occurence of a key using binary search
  * =====================================================================================
  */
     char *
-binary_upper_bound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
+BinaryUpperBound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
     char *spikesStart = NULL;
     unsigned long int numStart = 0;
@@ -247,17 +259,17 @@ binary_upper_bound (double timeToCompare, boost::iostreams::mapped_file_source &
     std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
 #endif
     return currentSpike;
-}		/* -----  end of function binary_upper_bound  ----- */
+}		/* -----  end of function BinaryUpperBound  ----- */
 
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  binary_lower_bound
+ *         Name:  BinaryLowerBound
  *  Description:  First occurence of a key using binary search
  * =====================================================================================
  */
     char *
-binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
+BinaryLowerBound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
     char *spikesStart = NULL;
     unsigned long int numStart = 0;
@@ -325,16 +337,16 @@ binary_lower_bound (double timeToCompare, boost::iostreams::mapped_file_source &
     std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
 #endif
     return currentSpike;
-}		/* -----  end of function binary_lower_bound  ----- */
+}		/* -----  end of function BinaryLowerBound  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  tardis
+ *         Name:  GenerateSingleSecondFiles
  *  Description:  
  * =====================================================================================
  */
     void
-tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vector<boost::iostreams::mapped_file_source> &dataMapsI, std::vector<std::vector<unsigned int> >& patterns, std::vector<std::vector <unsigned int> >& recalls, double timeToFly, struct param parameters)
+GenerateSingleSecondFiles (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vector<boost::iostreams::mapped_file_source> &dataMapsI, std::vector<std::vector<unsigned int> >& patterns, std::vector<std::vector <unsigned int> >& recalls, double timeToFly, struct param parameters)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
@@ -360,8 +372,8 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
     for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
     {
         /*  Excitatory */
-        char * chunk_start = binary_lower_bound(timeToFly - 1., std::ref(dataMapsE[i]));
-        char * chunk_end = binary_upper_bound(timeToFly, std::ref(dataMapsE[i]));
+        char * chunk_start = BinaryLowerBound(timeToFly - 1., std::ref(dataMapsE[i]));
+        char * chunk_end = BinaryUpperBound(timeToFly, std::ref(dataMapsE[i]));
         char * chunkit = NULL;
         if (chunk_end - chunk_start > 0)
         {
@@ -382,8 +394,8 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
         }
 
         /*  Inhibitory */
-        chunk_start = binary_lower_bound(timeToFly - 1., std::ref(dataMapsI[i]));
-        chunk_end = binary_upper_bound(timeToFly, std::ref(dataMapsI[i]));
+        chunk_start = BinaryLowerBound(timeToFly - 1., std::ref(dataMapsI[i]));
+        chunk_end = BinaryUpperBound(timeToFly, std::ref(dataMapsI[i]));
         if (chunk_end - chunk_start > 0)
         {
             chunkit = chunk_start;
@@ -535,7 +547,7 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
         converter.clear();
         converter << parameters.output_file << "-" << std::to_string(timeToFly) << "-" << std::setw(8)  << std::setfill('0') << std::to_string(j+1) << ".pattern-signal-noise-ratio.matrix";
         std::ofstream pattern_snr (converter.str());
-        snr = getSNR(pattern_neurons_rate[j], noise_neurons_rate[j]);
+        snr = PrintSNR(pattern_neurons_rate[j], noise_neurons_rate[j]);
         pattern_snr << timeToFly << "\t" << snr.SNR << "\t" << snr.mean << "\t" << snr.std << "\n";
         pattern_snr.close();
 
@@ -568,16 +580,16 @@ tardis (std::vector<boost::iostreams::mapped_file_source> &dataMapsE, std::vecto
 #ifdef DEBUG
     std::cout << "[TARDIS] Thread " << std::this_thread::get_id() << " reporting on conclusion, Sir!" << "\n";
 #endif
-}		/* -----  end of function tardis  ----- */
+}		/* -----  end of function GenerateSingleSecondFiles  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  populateMaps
+ *         Name:  PopulateMaps
  *  Description:  Funtion that populates my maps - so that I can multithread it
  * =====================================================================================
  */
     int 
-populateMaps(std::multimap<double, unsigned int> &map_to_populate, std::string filename)
+PopulateMaps(std::multimap<double, unsigned int> &map_to_populate, std::string filename)
 {
     std::ifstream ifs(filename);
     double timetemp; 
@@ -596,12 +608,12 @@ populateMaps(std::multimap<double, unsigned int> &map_to_populate, std::string f
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  getPatternsAndRecalls
+ *         Name:  LoadPatternsAndRecalls
  *  Description:  
  * =====================================================================================
  */
     void
-getPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std::vector<std::vector<unsigned int> >&recalls, struct param parameters)
+LoadPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std::vector<std::vector<unsigned int> >&recalls, struct param parameters)
 {
     clock_t clock_start = clock();
     std::ostringstream converter;
@@ -641,7 +653,7 @@ getPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std::
     clock_t clock_end = clock();
     std::cout << patterns.size() << " patterns and " << recalls.size() << " recalls read in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
 
-}		/* -----  end of function getPatternsAndRecalls  ----- */
+}		/* -----  end of function LoadPatternsAndRecalls  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -728,7 +740,7 @@ main(int ac, char* av[])
 
     /*  Calculate the times when I need to generate my graphs */
     /*  Remove duplicates */
-    graphing_times = calculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
+    graphing_times = CalculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
     graphing_times.insert(graphing_times.end(), parameters.plot_times.begin(), parameters.plot_times.end());
     std::sort(graphing_times.begin(), graphing_times.end());
     graphing_times.erase(std::unique (graphing_times.begin(), graphing_times.end()), graphing_times.end());
@@ -742,7 +754,7 @@ main(int ac, char* av[])
 
     /*  Get my patterns and recalls into vectors - these files are relatively
      *  minuscule */
-    getPatternsAndRecalls(std::ref(patterns), std::ref(recalls), parameters);
+    LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls), parameters);
 
     /*  Open my memory mapped files - no need to read the entire data into
      *  memory */
@@ -779,7 +791,7 @@ main(int ac, char* av[])
         /*  Only start a new thread if less than thread_max threads are running */
         if (task_counter < doctors_max)
         {
-            timeLords.emplace_back(std::thread (tardis, std::ref(raster_data_source_E), std::ref(raster_data_source_I), std::ref(patterns), std::ref(recalls), *i, parameters));
+            timeLords.emplace_back(std::thread (GenerateSingleSecondFiles, std::ref(raster_data_source_E), std::ref(raster_data_source_I), std::ref(patterns), std::ref(recalls), *i, parameters));
             task_counter++;
         }
         /*  If thread_max threads are running, wait for them to finish before
