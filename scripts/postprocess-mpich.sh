@@ -107,6 +107,7 @@ function run ()
                 ;;
             t)
                 snrgraphs="yes"
+                collectdata="yes"
                 collectsnrdata="yes"
                 ;;
             T)
@@ -122,33 +123,24 @@ function run ()
 
     pushd "$timestamp"
         (
-        if [[ "$surfaceplottimes" == "yes" ]] && [[ "$collectdata" == "yes" ]]
+        if [[ "$collectdata" == "yes" ]]
         then
 #            echo  "Generating surface graphs."
 #            # combine rank files
 #            if [[ ! -e "RAS-COMBINED" ]]
-#            then
-#                collectdata
+                echo "******* Passing on information to postprocess"
+                echo "******* Running: postprocess -o $timestamp"
+                ~/bin/research-bin/postprocess "-o" "$timestamp"
+                echo
+                touch RAS-COMBINED
 #            else
-#                echo "Ras files are already combined."
+#                echo "Post processed already."
 #            fi
-
-            echo "******* Passing on information to postprocess"
-            echo "******* Running: postprocess -o $timestamp"
-            ~/bin/research-bin/postprocess "-o" "$timestamp"
-            echo
-
-            for matrixFile in `ls *.combined.matrix`
-            do
-                datafile=$(basename "$matrixFile" ".combined.matrix")
-                sanitycheck
-                echo
-                plotspecifictimeplots
-                echo
-            done
-
-
-        elif [[ "$surfaceplottimes" == "yes" ]] && [[ "$collectdata" == "no" ]]
+        fi
+        ) & 
+        wait
+        (
+        if [[ "$surfaceplottimes" == "yes" ]]
         then
             echo  "Generating surface graphs."
             echo "***** Assuming files already merged. Just plotting with gnuplot."
@@ -434,6 +426,17 @@ function sanitycheckoverall()
 
 function generatepatterngraphs ()
 {
+ gnuplotcommand="set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set output \"""$timeofpattern"".patterns.png\"; set xtics rotate; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
+
+    for i in `seq 1 $numpats`;
+    do
+        patternfilename="$timeofpattern""-""$(printf %08d $i)"".pattern.matrix"
+        gnuplotcommand+="set cbrange [0:200]; set xlabel \"neurons\"; set ylabel \"neurons\"; set title \"pattern ""$i""\"; splot \"""$patternfilename""\" matrix with image; "
+    done
+    gnuplotcommand+="unset multiplot;"
+    gnuplot -e "$gnuplotcommand" &
+    echo "*********** Patterns at time $timeofpattern generated *****************"
+
     gnuplotcommand5="set style fill solid 0.5; set tics out nomirror; set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set xtics rotate; set output \"""$timeofpattern"".patterns-histograms.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
 
     for i in `seq 1 $numpats`;
@@ -446,7 +449,7 @@ function generatepatterngraphs ()
         gnuplotcommand5+="set xrange [""$minPatternRate"":""$maxPatternRate""]; set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; binwidth=""$binwidthPattern""; bin(x,width)=width*floor(x/width)+width/2.0; plot \"""$patternfilename5""\" using (bin(\$1,binwidth)):(1.0) smooth freq with boxes lc rgb \"blue\" t \"""$i""\"; "
     done
     gnuplotcommand5+="unset multiplot;"
-    gnuplot -e "$gnuplotcommand5" &
+    #gnuplot -e "$gnuplotcommand5" &
     echo "*********** Pattern histograms at time $timeofpattern generated *****************"
 
     gnuplotcommand6="set style fill solid 0.5; set tics out nomirror; set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set xtics rotate; set output \"""$timeofpattern"".noises-histograms.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
@@ -461,7 +464,7 @@ function generatepatterngraphs ()
         gnuplotcommand6+="set xrange [""$minNoiseRate"":""$maxNoiseRate""]; set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; binwidth=""$binwidthNoise""; bin(x,width)=width*floor(x/width)+width/2.0; plot \"""$noisefilename""\" using (bin(\$1,binwidth)):(1.0) smooth freq with boxes lc rgb \"red\" t \"""$i""\"; "
     done
     gnuplotcommand6+="unset multiplot;"
-    gnuplot -e "$gnuplotcommand6" &
+    #gnuplot -e "$gnuplotcommand6" &
     echo "*********** Noise histograms at time $timeofpattern generated *****************"
 }
 
