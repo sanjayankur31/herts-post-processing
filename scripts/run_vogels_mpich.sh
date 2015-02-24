@@ -40,7 +40,7 @@ function default()
     mpi_ranks=$(grep "mpi_ranks" $configfile | sed "s/.*=//")
     mkdir -v "$newsimenv"
     pushd "$newsimenv"
-        cp "$configfile" . -v
+        cp "$configfile" ./$newsimenv.cfg -v
         echo "$ mpiexec -n $mpi_ranks vogels --out $newsimenv"
         LD_LIBRARY_PATH=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/auryn/src/.libs mpiexec -n $mpi_ranks ~/bin/research-bin/vogels --out $newsimenv
     popd
