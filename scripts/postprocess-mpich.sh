@@ -566,10 +566,12 @@ function plotoverallplots ()
 
     if ls *_ie_stdp.weightinfo 1> /dev/null 2>&1;
     then
-        if [[ `cmp rowsE.temp rowsI.temp` -ne 0 ]]
+        cmp rowsE.temp rowsI.temp
+        retval=$?
+        if [[ $retval -ne 0 ]]
         then
             echo "Number of rows in E and I files aren't the same. Check input!"
-            echo "E has $numberofrowsE rows while I has $numberofrowsI!"
+            echo "E has `cat rowsE.temp` rows while I has `cat rowsI.temp`!"
         else
             echo "Rows in E/I files: `cat rowsE.temp`"
             rm rowsE.temp rowsI.temp -fv
