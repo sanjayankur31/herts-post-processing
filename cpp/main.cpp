@@ -34,8 +34,16 @@ struct param parameters;
 main ( int argc, char *argv[] )
 {
     clock_t global_clock_start, global_clock_end;
+    std::vector<std::vector<unsigned int> > patterns;
+    std::vector<std::vector<unsigned int> > recalls;
+    unsigned int threads_max = 0;
+
     global_clock_start = clock();
 
+
+    /*-----------------------------------------------------------------------------
+     *  COMMAND LINE AND CONFIGURATION FILE PROCESSING
+     *-----------------------------------------------------------------------------*/
     try {
 
         po::options_description cli("Command line options");
@@ -93,8 +101,16 @@ main ( int argc, char *argv[] )
         std::cerr << "Exception of unknown type!\n";
     }
 
+
+    /*-----------------------------------------------------------------------------
+     *  MAIN LOGIC BEGINS HERE
+     *-----------------------------------------------------------------------------*/
+    /*  At the most, use 20 threads, other wise WAIT */
+    threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
+    std::cout << "Maximum number of threads: " << threads_max << "\n";
+
     /*  Load patterns and recalls */
-    LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls), parameters);
+    LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
     global_clock_end = clock();
     std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";
     return 0;
