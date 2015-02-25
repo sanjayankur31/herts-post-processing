@@ -52,6 +52,9 @@ struct SNR
 
 struct param
 {
+    /*  File that contains the plotting times */
+    std::string plot_times_file;
+
     std::string config_file;
     /*  Number of excitatory neurons */
     unsigned int NE;
@@ -139,14 +142,43 @@ CalculateTimeToPlotList (unsigned int num_pats, std::vector <unsigned int> stage
 
 /* 
  * ===  FUNCTION  ======================================================================
+ *         Name:  CalculateTimeToPlotList
+ *  Description:  A different implementation where I just read them from a file
+ * =====================================================================================
+ */
+std::vector<double>
+CalculateTimeToPlotList (std::string timefilename )
+{
+    std::vector<double> graphing_times;
+    double temp;
+    std::ifstream timefilestream;
+    try {
+        timefilestream.open(timefilename);
+        while (timefilestream >> temp)
+        {
+            graphing_times.push_back(temp);
+        }
+
+        std::sort(graphing_times.begin(), graphing_times.end());
+    }
+    catch (std::ios_base::failure &e)
+    {
+        std::cerr << e.what() << "\n";
+    }
+
+    return graphing_times;
+}		/* -----  end of function CalculateTimeToPlotList  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
  *         Name:  GetChunks
  *  Description:  
  * =====================================================================================
  */
     void
-GetChunks ( <+argument_list+> )
+GetChunks (  )
 {
-    return <+return_value+>;
+    return ;
 }		/* -----  end of function GetChunks  ----- */
 
 /* 
@@ -740,7 +772,10 @@ main(int ac, char* av[])
 
     /*  Calculate the times when I need to generate my graphs */
     /*  Remove duplicates */
-    graphing_times = CalculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
+    graphing_times = CalculateTimeToPlotList(parameters.plot_times_file);
+    /*  Only fall back to math if they aren't read from the file */
+    if (graphing_times.size()  == 0)
+        graphing_times = CalculateTimeToPlotList(parameters.num_pats, parameters.stage_times);
     graphing_times.insert(graphing_times.end(), parameters.plot_times.begin(), parameters.plot_times.end());
     std::sort(graphing_times.begin(), graphing_times.end());
     graphing_times.erase(std::unique (graphing_times.begin(), graphing_times.end()), graphing_times.end());
