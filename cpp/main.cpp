@@ -107,7 +107,7 @@ main ( int argc, char *argv[] )
      *-----------------------------------------------------------------------------*/
     /*  At the most, use 20 threads, other wise WAIT */
     threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
-    std::cout << "Maximum number of threads: " << threads_max << "\n";
+    std::cout << "Maximum number of threads in use: " << threads_max << "\n";
 
     /*  Load patterns and recalls */
     LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));

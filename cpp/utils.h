@@ -172,4 +172,89 @@ LoadPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std:
 #endif     /* -----  DEBUG_ENABLED  ----- */
 }		/* -----  end of function LoadPatternsAndRecalls  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CalculateTimeToPlotList
+ *  Description:  A different implementation where I just read them from a file
+ *
+ *  Returns: a vector with the times that were read from the file
+ *  Arguments:
+ *      - NONE
+ * =====================================================================================
+ */
+std::vector<double>
+ReadTimeToPlotListFromFile ()
+{
+    std::vector<double> graphing_times;
+    double temp;
+    std::ifstream timefilestream;
+    try {
+        timefilestream.open(parameters.plot_times_file);
+        while (timefilestream >> temp)
+        {
+            graphing_times.push_back(temp);
+        }
+
+    }
+    catch (std::ios_base::failure &e)
+    {
+        std::cerr << e.what() << "\n";
+        std::cerr << "Something went wrong reading from file. Autogenerating" << "\n";
+        graphing_times = CalculateTimeToPlotList();
+
+    }
+
+    std::sort(graphing_times.begin(), graphing_times.end());
+    return graphing_times;
+}		/* -----  end of function CalculateTimeToPlotList  ----- */
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  CalculateTimeToPlotList
+ *  Description:  If the file isn't found, this calculates the times using a
+ *  simple logic
+ *
+ *  Returns: a vector with the times that were read from the file
+ *  Arguments:
+ *      - NONE
+ * =====================================================================================
+ */
+std::vector<double>
+CalculateTimeToPlotList ()
+{
+    /*  Intervals after the recall stimulus that I want to graph at */
+    float graphing_intervals[1] = {0.};
+    std::vector<double> graphing_times;
+    double times = 0;
+    std::ofstream ofs("00-Recall-times.txt", std::ofstream::out);
+    ofs << "Intervals: ";
+    for (int j = 0; j < (int)(sizeof(graphing_intervals)/sizeof(float)); j += 1 ) {
+        ofs << graphing_intervals[j] << "\t";
+    }
+    ofs << "\n";
+
+    /*  Initial stimulus and stabilisation */
+    times = parameters.stage_times[0] + parameters.stage_times[1];
+
+    for (unsigned int i = 1; i <= parameters.num_pats; ++i ) {
+        /*  pattern strengthening and pattern stabilisation */
+        times += (parameters.stage_times[2] + parameters.stage_times[3]);
+
+        for (unsigned int k = 1; k <= i; ++k)
+        {
+            /*  Recall stimulus given */
+            times += parameters.stage_times[4];
+            ofs << times << "\t";
+
+            /*  calculate my plotting intervals */
+            for (int j = 0; j < (int)(sizeof(graphing_intervals)/sizeof(float)); j += 1 ) {
+                graphing_times.push_back(times+graphing_intervals[j]);
+            }
+            /*  Recall check time added */
+            times += parameters.stage_times[5];
+        }
+    }
+    ofs << "\n";
+    ofs.close();
+    return graphing_times;
+}		/* -----  end of function CalculateTimeToPlotList  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */
