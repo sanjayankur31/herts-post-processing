@@ -40,6 +40,7 @@ main ( int ac, char *av[] )
     std::vector<std::vector<unsigned int> > recalls;
     std::vector<double> graphing_times;
     unsigned int threads_max = 0;
+    struct what_to_plot plot_this;
 
     global_clock_start = clock();
 
@@ -54,6 +55,10 @@ main ( int ac, char *av[] )
             ("help,h", "produce help message")
             ("out,o", po::value<std::string>(&(parameters.output_file)), "output filename")
             ("config,c", po::value<std::string>(&(parameters.config_file))->default_value("simulation_config.cfg"),"configuration file to be used to find parameter values for this simulation run")
+            ("all,a","Plot all plots - this may take a while?")
+            ("master,m","Plot master time plot - this may take a while?")
+            ("pattern,p","Plot pattern plots?")
+            ("snr,s","Plot SNR plots?")
             ;
 
 
@@ -79,9 +84,31 @@ main ( int ac, char *av[] )
         po::store(po::basic_command_line_parser<char>(ac, av).options(cli).allow_unregistered().run(), vm);
         po::notify(vm);
 
-        if (vm.count("help")) {
+        if (vm.count("help")) 
+        {
             std::cout << visible << "\n";
             return 0;
+        }
+        if (vm.count("all")) 
+        {
+            plot_this.master = true;
+            plot_this.pattern_graphs = true;
+            plot_this.snr_graphs = true;
+        }
+        else 
+        {
+            if (vm.count("master"))
+            {
+                plot_this.master = true;
+            }
+            if (vm.count("pattern"))
+            {
+                plot_this.pattern_graphs = true;
+            }
+            if (vm.count("snr"))
+            {
+                plot_this.snr_graphs = true;
+            }
         }
 
         std::ifstream ifs(parameters.config_file.c_str());
@@ -96,11 +123,13 @@ main ( int ac, char *av[] )
             po::notify(vm);
         }
     }
-    catch(std::exception &e) {
+    catch(std::exception &e) 
+    {
         std::cerr << "error: " << e.what() << "\n";
         return 1;
     }
-    catch(...) {
+    catch(...) 
+    {
         std::cerr << "Exception of unknown type!\n";
     }
 

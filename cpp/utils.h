@@ -90,6 +90,13 @@ struct param
 
 struct param parameters;
 
+struct what_to_plot
+{
+    bool master;
+    bool pattern_graphs;
+    bool snr_graphs;
+};
+
 /*-----------------------------------------------------------------------------
  *  FUNCTIONS
  *-----------------------------------------------------------------------------*/
