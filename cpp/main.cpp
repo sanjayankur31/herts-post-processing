@@ -20,9 +20,11 @@
 
 /*  Holds my parameters both from the configuration file and the command line
  *  Since this is global, I'm not passing parameters as an argument to any
- *  function 
+ *  function.
+ *
+ *  Extern since it's defined in the header file.
  */
-struct param parameters;
+extern struct param parameters;
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -31,11 +33,12 @@ struct param parameters;
  * =====================================================================================
  */
     int
-main ( int argc, char *argv[] )
+main ( int ac, char *av[] )
 {
     clock_t global_clock_start, global_clock_end;
     std::vector<std::vector<unsigned int> > patterns;
     std::vector<std::vector<unsigned int> > recalls;
+    std::vector<double> graphing_times;
     unsigned int threads_max = 0;
 
     global_clock_start = clock();
@@ -108,6 +111,15 @@ main ( int argc, char *argv[] )
     /*  At the most, use 20 threads, other wise WAIT */
     threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
     std::cout << "Maximum number of threads in use: " << threads_max << "\n";
+
+    /*  Get plot times */
+    graphing_times = ReadTimeToPlotListFromFile();
+    if(graphing_times.size() == 0)
+    {
+        std::cerr << "Graphing times were not generated. Exiting program." << "\n";
+        return -1;
+    }
+
 
     /*  Load patterns and recalls */
     LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
