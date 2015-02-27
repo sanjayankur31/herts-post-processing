@@ -190,7 +190,7 @@ main ( int ac, char *av[] )
         /*  Only start a new thread if less than thread_max threads are running */
         if (task_counter < threads_max)
         {
-            threadlist.emplace_back(std::thread (GenerateSingleSecondFiles, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), *i));
+            threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), *i));
             task_counter++;
         }
         /*  If thread_max threads are running, wait for them to finish before
