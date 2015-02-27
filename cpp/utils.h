@@ -425,6 +425,33 @@ BinaryLowerBound (double timeToCompare, boost::iostreams::mapped_file_source &op
     return currentSpike;
 }		/* -----  end of function BinaryLowerBound  ----- */
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  ExtractChunk
+ *  Description:  Extract chunks between the two buffer pointers
+ * =====================================================================================
+ */
+std::vector <unsigned int>
+ExtractChunk (char * chunk_start, char * chunk_end )
+{
+    char * chunkit = NULL;
+    std::vector <unsigned int> neurons;
+    if (chunk_end - chunk_start > 0)
+    {
+        chunkit = chunk_start;
+        while (chunkit <= chunk_end)
+        {
+            struct spikeEvent_type *buffer;
+            buffer = (struct spikeEvent_type *)chunkit;
+            neurons.emplace_back(buffer->neuronID);
+            chunkit += sizeof(struct spikeEvent_type);
+        }
+    }
+    return neurons;
+}		/* -----  end of function ExtractChunk  ----- */
+
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  MasterFunction
@@ -434,6 +461,53 @@ BinaryLowerBound (double timeToCompare, boost::iostreams::mapped_file_source &op
     void
 MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time)
 {
+    std::vector <unsigned int>neuronsE;
+    std::vector <unsigned int>neuronsI;
+    std::vector <std::vector<unsigned int> >pattern_neurons_rate;
+    std::vector <std::vector<unsigned int> >noise_neurons_rate;
+    std::vector <std::vector<unsigned int> >recall_neurons_rate;
+    std::vector <unsigned int>neuronsE_rate;
+    std::vector <unsigned int>neuronsI_rate;
+    std::ostringstream converter;
+
+    /*  Initialise the 2D vectors */
+    for (unsigned int i = 0; i < parameters.num_pats; ++i)
+    {
+        pattern_neurons_rate.emplace_back(std::vector<unsigned int>());
+        noise_neurons_rate.emplace_back(std::vector<unsigned int>());
+        recall_neurons_rate.emplace_back(std::vector<unsigned int>());
+    }
+
+#ifdef DEBUG
+    std::cout << "[MasterFunction] Thread " << std::this_thread::get_id() << " active." << "\n";
+#endif
+    /*  Fill up my vectors with neurons that fired in this period */
+    for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
+    {
+        /*  Excitatory */
+        char * chunk_start = BinaryLowerBound(chunk_time - 1., std::ref(spikes_E[i]));
+        char * chunk_end = BinaryUpperBound(chunk_time, std::ref(spikes_E[i]));
+        neuronsE = ExtractChunk(chunk_start, chunk_end);
+        if (neuronsE.size() == 0)
+        {
+            std::cout << chunk_time << " not found in E file "  << i << "!\n";
+            return;
+        }
+
+        /*  Inhibitory */
+        chunk_start = BinaryLowerBound(chunk_time - 1., std::ref(spikes_I[i]));
+        chunk_end = BinaryUpperBound(chunk_time, std::ref(spikes_I[i]));
+        neuronsI = ExtractChunk(chunk_start, chunk_end);
+        if (neuronsI.size() == 0)
+        {
+            std::cout << chunk_time << " not found in I file "  << i << "!\n";
+            return;
+        }
+    }
+    /*  Sort - makes next operations more efficient, or I think it does */
+    std::sort(neuronsE.begin(), neuronsE.end());
+    std::sort(neuronsI.begin(), neuronsI.end());
+
     return;
 }		/* -----  end of function MasterFunction  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */
