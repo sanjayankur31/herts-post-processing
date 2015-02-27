@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Ankur Sinha (FranciscoD), ankursinha@fedoraproject.org
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -26,7 +26,7 @@
  */
 extern struct param parameters;
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  main
  *  Description:  Main method with post processing logic
@@ -36,6 +36,7 @@ extern struct param parameters;
 main ( int ac, char *av[] )
 {
     clock_t global_clock_start, global_clock_end;
+    clock_t clock_start, clock_end;
     std::vector<std::vector<unsigned int> > patterns;
     std::vector<std::vector<unsigned int> > recalls;
     std::vector<double> graphing_times;
@@ -44,6 +45,9 @@ main ( int ac, char *av[] )
     unsigned int task_counter = 0;
     std::vector<std::thread> threadlist;
     std::thread master_graph_thread;
+    std::vector<boost::iostreams::mapped_file_source> spikes_E;
+    std::vector<boost::iostreams::mapped_file_source> spikes_I;
+    std::ostringstream converter;
 
     global_clock_start = clock();
 
@@ -51,7 +55,7 @@ main ( int ac, char *av[] )
     /*-----------------------------------------------------------------------------
      *  COMMAND LINE AND CONFIGURATION FILE PROCESSING
      *-----------------------------------------------------------------------------*/
-    try 
+    try
     {
         po::options_description cli("Command line options");
         cli.add_options()
@@ -87,18 +91,18 @@ main ( int ac, char *av[] )
         po::store(po::basic_command_line_parser<char>(ac, av).options(cli).allow_unregistered().run(), vm);
         po::notify(vm);
 
-        if (vm.count("help")) 
+        if (vm.count("help"))
         {
             std::cout << visible << "\n";
             return 0;
         }
-        if (vm.count("all")) 
+        if (vm.count("all"))
         {
             plot_this.master = true;
             plot_this.pattern_graphs = true;
             plot_this.snr_graphs = true;
         }
-        else 
+        else
         {
             if (vm.count("master"))
             {
@@ -126,12 +130,12 @@ main ( int ac, char *av[] )
             po::notify(vm);
         }
     }
-    catch(std::exception &e) 
+    catch(std::exception &e)
     {
         std::cerr << "error: " << e.what() << "\n";
         return 1;
     }
-    catch(...) 
+    catch(...)
     {
         std::cerr << "Exception of unknown type!\n";
     }
@@ -160,6 +164,58 @@ main ( int ac, char *av[] )
 
     /*  Load patterns and recalls */
     LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
+
+    /*  Load memory mapped files */
+    clock_start = clock();
+    for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
+    {
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "." << i << "_e.ras";
+        spikes_E.emplace_back(boost::iostreams::mapped_file_source());
+        spikes_E[i].open(converter.str());
+
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "." << i << "_i.ras";
+        spikes_I.emplace_back(boost::iostreams::mapped_file_source());
+        spikes_I[i].open(converter.str());
+    }
+    clock_end = clock();
+    std::cout << spikes_E.size() <<  " E and " << spikes_I.size() << " I files mapped in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
+
+    /*  Main worker loop */
+    for(std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
+    {
+        /*  Only start a new thread if less than thread_max threads are running */
+        if (task_counter < threads_max)
+        {
+            threadlist.emplace_back(std::thread (GenerateSingleSecondFiles, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), *i));
+            task_counter++;
+        }
+        /*  If thread_max threads are running, wait for them to finish before
+         *  starting a second round.
+         *
+         *  Yes, this can be optimised by using a thread pool but I really
+         *  don't have the patience to look into ThreadPool or a
+         *  boost::thread_group today!
+         */
+        else
+        {
+            for (std::thread &t: timeLords)
+            {
+                if(t.joinable())
+                {
+                    t.join();
+                    task_counter--;
+                }
+            }
+            timeLords.clear();
+        }
+    }
+
+
+    /*  End of work */
     global_clock_end = clock();
     std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";
     return 0;

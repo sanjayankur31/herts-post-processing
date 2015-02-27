@@ -11,7 +11,7 @@
  *       Compiler:  gcc
  *
  *         Author:  Ankur Sinha (FranciscoD), ankursinha@fedoraproject.org
- *   Organization:  
+ *   Organization:
  *
  * =====================================================================================
  */
@@ -101,7 +101,7 @@ struct what_to_plot
  *  FUNCTIONS
  *-----------------------------------------------------------------------------*/
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  LoadPatternsAndRecalls
  *  Description:  Loads patterns and recalls from files into given vectors
@@ -131,7 +131,7 @@ LoadPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std:
         std::string pattern = converter.str();
         patterns.emplace_back(std::vector<unsigned int> ());
 
-        try 
+        try
         {
             ifs.open(pattern);
 
@@ -155,7 +155,7 @@ LoadPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std:
         std::string recall = converter.str();
         recalls.emplace_back(std::vector<unsigned int> ());
 
-        try 
+        try
         {
             ifs.open(recall);
 
@@ -180,7 +180,7 @@ LoadPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std:
 #endif     /* -----  DEBUG_ENABLED  ----- */
 }		/* -----  end of function LoadPatternsAndRecalls  ----- */
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  CalculateTimeToPlotList
  *  Description:  If the file isn't found, this calculates the times using a
@@ -217,7 +217,7 @@ CalculateTimeToPlotList ()
     return graphing_times;
 }		/* -----  end of function CalculateTimeToPlotList  ----- */
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  CalculateTimeToPlotList
  *  Description:  A different implementation where I just read them from a file
@@ -253,7 +253,7 @@ ReadTimeToPlotListFromFile ()
 }		/* -----  end of function CalculateTimeToPlotList  ----- */
 
 
-/* 
+/*
  * ===  FUNCTION  ======================================================================
  *         Name:  PlotMasterGraph
  *  Description:  TODO - place holder for the time being
@@ -269,4 +269,17 @@ PlotMasterGraph ( )
     std::cout << "Total time taken to plot master plot: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
     return;
 }		/* -----  end of function PlotMasterGraph  ----- */
+
+
+/*
+ * ===  FUNCTION  ======================================================================
+ *         Name:  MasterFunction
+ *  Description:
+ * =====================================================================================
+ */
+    void
+MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time)
+{
+    return;
+}		/* -----  end of function MasterFunction  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */
