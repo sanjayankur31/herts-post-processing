@@ -270,6 +270,160 @@ PlotMasterGraph ( )
     return;
 }		/* -----  end of function PlotMasterGraph  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  BinaryUpperBound
+ *  Description:  Last occurence of a key using binary search
+ * =====================================================================================
+ */
+    char *
+BinaryUpperBound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
+{
+    char *spikesStart = NULL;
+    unsigned long int numStart = 0;
+    unsigned long int numEnd = 0;
+    char *currentSpike = NULL;
+    unsigned long int numCurrent = 0;
+    unsigned long int numdiff = 0;
+    unsigned long int step = 0;
+    unsigned long int sizeofstruct = sizeof(struct spikeEvent_type);
+    struct spikeEvent_type *currentRecord = NULL;
+
+
+    /*  start of last record */
+    spikesStart =  (char *)openMapSource.data();
+    numStart = 0;
+    /*  end of last record */
+    numEnd = (openMapSource.size()/sizeofstruct -1);
+
+    /*  Number of structs */
+
+    numdiff = numEnd - numStart;
+#ifdef DEBUG
+    std::cout << "Finding last of " << timeToCompare << "\n";
+    unsigned long int sizediff = 0;
+    char *spikesEnd = NULL;
+    spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
+    sizediff = spikesEnd - spikesStart;
+    std::cout << "Struct size is: " << sizeofstruct << "\n";
+    std::cout << "Char size is: " << sizeof(char)  << "\n";
+    std::cout << "size of int is: " << sizeof(int)  << "\n";
+    std::cout << "Number of records in this file: " << (openMapSource.size() - sizeofstruct)/sizeofstruct << "\n";
+    std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
+    printf("With printf subtraction %zu\n",(spikesEnd - spikesStart));
+    std::cout << "Proper subtraction : " << (spikesEnd - spikesStart) << "\n";
+    std::cout << "sizediff : " << sizediff << "\n";
+    printf("With printf sizediff %zu\n",sizediff);
+    std::cout << "multiplier " << (spikesEnd - spikesStart)/sizediff << "\n";
+    std::cout << "Number of struct records in this file: " << numdiff << "\n";
+#endif
+
+    while( numdiff > 0)
+    {
+        numCurrent = numStart;
+        step = (numdiff/2);
+
+        numCurrent += step;
+        currentSpike = spikesStart + numCurrent * sizeofstruct;
+        currentRecord = (struct spikeEvent_type *)currentSpike;
+#ifdef DEBUG
+        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at line" << numCurrent << "\n";
+#endif
+
+        if (!(timeToCompare < currentRecord->time))
+        {
+            numStart = ++numCurrent;
+            numdiff -= step + 1;
+        }
+        else
+            numdiff = step;
+    }
+
+    currentSpike = spikesStart + (numStart * sizeofstruct);
+    currentRecord = (struct spikeEvent_type *)currentSpike;
+#ifdef DEBUG
+    std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
+#endif
+    return currentSpike;
+}		/* -----  end of function BinaryUpperBound  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  BinaryLowerBound
+ *  Description:  First occurence of a key using binary search
+ * =====================================================================================
+ */
+    char *
+BinaryLowerBound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
+{
+    char *spikesStart = NULL;
+    unsigned long int numStart = 0;
+    unsigned long int numEnd = 0;
+    char *currentSpike = NULL;
+    unsigned long int numCurrent = 0;
+    unsigned long int numdiff = 0;
+    unsigned long int step = 0;
+    unsigned long int sizeofstruct = sizeof(struct spikeEvent_type);
+    struct spikeEvent_type *currentRecord = NULL;
+
+
+    /*  start of last record */
+    spikesStart =  (char *)openMapSource.data();
+    numStart = 0;
+    /*  end of last record */
+    numEnd = (openMapSource.size()/sizeofstruct -1);
+
+    /*  Number of structs */
+    numdiff = numEnd - numStart;
+
+#ifdef DEBUG
+    std::cout << "Finding first of " << timeToCompare << "\n";
+    unsigned long int sizediff = 0;
+    char *spikesEnd = NULL;
+    spikesEnd =  (spikesStart + openMapSource.size() - sizeofstruct);
+    sizediff = spikesEnd - spikesStart;
+    std::cout << "Struct size is: " << sizeofstruct << "\n";
+    std::cout << "Char size is: " << sizeof(char)  << "\n";
+    std::cout << "size of int is: " << sizeof(int)  << "\n";
+    std::cout << "Number of records in this file: " << (openMapSource.size() - sizeofstruct)/sizeofstruct << "\n";
+    std::cout << "Number of records in this file: " << (spikesEnd - spikesStart)/sizeofstruct << "\n";
+    printf("With printf subtraction %zu\n",(spikesEnd - spikesStart));
+    std::cout << "Proper subtraction : " << (spikesEnd - spikesStart) << "\n";
+    std::cout << "sizediff : " << sizediff << "\n";
+    printf("With printf sizediff %zu\n",sizediff);
+    std::cout << "multiplier " << (spikesEnd - spikesStart)/sizediff << "\n";
+    std::cout << "Number of struct records in this file: " << numdiff << "\n";
+#endif
+
+    while( numdiff > 0)
+    {
+        numCurrent = numStart;
+        step = (numdiff/2);
+
+        numCurrent += step;
+        currentSpike = spikesStart + numCurrent * sizeofstruct;
+        currentRecord = (struct spikeEvent_type *)currentSpike;
+#ifdef DEBUG
+        std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at line" << numCurrent << "\n";
+#endif
+
+        if (currentRecord->time < timeToCompare)
+        {
+            numStart = ++numCurrent;
+            numdiff -= step + 1;
+        }
+        else
+            numdiff = step;
+    }
+
+    currentSpike = spikesStart + (numStart * sizeofstruct);
+    currentRecord = (struct spikeEvent_type *)currentSpike;
+#ifdef DEBUG
+    std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
+#endif
+    return currentSpike;
+}		/* -----  end of function BinaryLowerBound  ----- */
 
 /*
  * ===  FUNCTION  ======================================================================
