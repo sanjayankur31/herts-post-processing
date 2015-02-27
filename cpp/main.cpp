@@ -202,7 +202,7 @@ main ( int ac, char *av[] )
          */
         else
         {
-            for (std::thread &t: timeLords)
+            for (std::thread &t: threadlist)
             {
                 if(t.joinable())
                 {
@@ -210,7 +210,7 @@ main ( int ac, char *av[] )
                     task_counter--;
                 }
             }
-            timeLords.clear();
+            threadlist.clear();
         }
     }
 
