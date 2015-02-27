@@ -251,4 +251,22 @@ ReadTimeToPlotListFromFile ()
     std::sort(graphing_times.begin(), graphing_times.end());
     return graphing_times;
 }		/* -----  end of function CalculateTimeToPlotList  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  PlotMasterGraph
+ *  Description:  TODO - place holder for the time being
+ * =====================================================================================
+ */
+    void
+PlotMasterGraph ( )
+{
+    clock_t clock_start, clock_end;
+    clock_start = clock();
+
+    clock_end = clock();
+    std::cout << "Total time taken to plot master plot: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
+    return;
+}		/* -----  end of function PlotMasterGraph  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */

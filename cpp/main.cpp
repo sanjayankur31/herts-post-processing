@@ -41,6 +41,9 @@ main ( int ac, char *av[] )
     std::vector<double> graphing_times;
     unsigned int threads_max = 0;
     struct what_to_plot plot_this;
+    unsigned int task_counter = 0;
+    std::vector<std::thread> threadlist;
+    std::thread master_graph_thread;
 
     global_clock_start = clock();
 
@@ -48,8 +51,8 @@ main ( int ac, char *av[] )
     /*-----------------------------------------------------------------------------
      *  COMMAND LINE AND CONFIGURATION FILE PROCESSING
      *-----------------------------------------------------------------------------*/
-    try {
-
+    try 
+    {
         po::options_description cli("Command line options");
         cli.add_options()
             ("help,h", "produce help message")
@@ -141,6 +144,12 @@ main ( int ac, char *av[] )
     threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
     std::cout << "Maximum number of threads in use: " << threads_max << "\n";
 
+    /* Let this run independently. It takes quite a while */
+    if (plot_this.master)
+    {
+        master_graph_thread = std::thread (PlotMasterGraph);
+    }
+
     /*  Get plot times */
     graphing_times = ReadTimeToPlotListFromFile();
     if(graphing_times.size() == 0)
@@ -148,7 +157,6 @@ main ( int ac, char *av[] )
         std::cerr << "Graphing times were not generated. Exiting program." << "\n";
         return -1;
     }
-
 
     /*  Load patterns and recalls */
     LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
