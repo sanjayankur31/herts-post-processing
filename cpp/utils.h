@@ -480,6 +480,41 @@ PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, dou
 }		/* -----  end of function PlotHistogram  ----- */
 
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GetSNR
+ *  Description:  Get the SNR of one pattern
+ * =====================================================================================
+ */
+    struct SNR
+GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseRates )
+{
+    struct SNR snr;
+    unsigned int sum_patterns = std::accumulate(patternRates.begin(), patternRates.end(),0.0);
+    snr.mean = sum_patterns/patternRates.size();
+
+    double sq_diff = 0.;
+    std::for_each(patternRates.begin(), patternRates.end(), [&] (const double d) {
+            sq_diff += pow((d - snr.mean),2);
+            });
+
+    snr.std = sqrt(sq_diff/(patternRates.size() -1));
+
+    unsigned int sum_noises = std::accumulate(noiseRates.begin(), noiseRates.end(),0.0);
+    double mean_noises = sum_noises/noiseRates.size();
+
+    sq_diff = 0.;
+    std::for_each(noiseRates.begin(), noiseRates.end(), [&] (const double d) {
+            sq_diff += pow((d - mean_noises),2);
+            });
+
+    double std_noises = sqrt(sq_diff/(noiseRates.size() -1));
+
+    snr.SNR = ((2.*pow((snr.mean - mean_noises),2))/(pow(snr.std,2) + pow(std_noises,2)));
+
+    return snr;
+}		/* -----  end of function GetSNR  ----- */
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  MasterFunction
@@ -497,6 +532,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     std::vector <unsigned int>neuronsE_rate;
     std::vector <unsigned int>neuronsI_rate;
     std::ostringstream converter;
+    std::vector <struct SNR> snrs_at_chunk_time;
 
     /*  Initialise the 2D vectors */
     /*  Only process stored patterns, not all */
@@ -599,9 +635,9 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     converter << parameters.output_file << "-" << chunk_time << ".i.histogram.png"; 
     PlotHistogram(neuronsI_rate, converter.str(), chunk_time, "red", "Inhibitory");
 
-    if (plot_this.pattern_graphs)
+    for (unsigned int i = 0; i < patternsStored; ++i)
     {
-        for (unsigned int i = 0; i < patternsStored; ++i)
+        if (plot_this.pattern_graphs)
         {
             converter.str("");
             converter.clear();
@@ -612,6 +648,8 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
             converter << parameters.output_file << "-" << chunk_time << ".noise." << i+1 << ".histogram.png"; 
             PlotHistogram(noise_neurons_rate[i], converter.str(), chunk_time, "black", "Noise");
         }
+
+        snrs_at_chunk_time.emplace_back(GetSNR(pattern_neurons_rate[i], recall_neurons_rate[i]));
     }
 
     return;
