@@ -97,6 +97,8 @@ struct what_to_plot
     bool snr_graphs;
 };
 
+struct what_to_plot plot_this;
+
 /*-----------------------------------------------------------------------------
  *  FUNCTIONS
  *-----------------------------------------------------------------------------*/
@@ -452,6 +454,32 @@ ExtractChunk (char * chunk_start, char * chunk_end )
 }		/* -----  end of function ExtractChunk  ----- */
 
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  PlotHistogram
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, double chunk_time, std::string colour, std::string legendLabel)
+{
+    sort(values.begin(), values.end());
+    double binwidth = (values.back() - values.front())/values.size();
+    Gnuplot gp;
+    gp << "set style fill solid 0.5; set tics out nomirror; \n"; 
+    gp << "set xrange [" << values.front() << ":" << values.back() << "];\n";
+    gp << "set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; \n";
+    gp << "binwidth=" << binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
+    gp << "set output \"" << outputFileName << "\n";
+    gp << "set title \"Histogram of firing rates at time \"" << chunk_time << "\"; \n";
+    gp << "plot \"-\" using (bin($1,binwidth)):(1.0) smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\" \n";
+    gp.send1d(values);
+
+    std::cout << outputFileName << "plotted." << "\n";
+}		/* -----  end of function PlotHistogram  ----- */
+
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  MasterFunction
@@ -459,7 +487,7 @@ ExtractChunk (char * chunk_start, char * chunk_end )
  * =====================================================================================
  */
     void
-MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time)
+MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time, unsigned int patternsStored)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
@@ -471,7 +499,8 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     std::ostringstream converter;
 
     /*  Initialise the 2D vectors */
-    for (unsigned int i = 0; i < parameters.num_pats; ++i)
+    /*  Only process stored patterns, not all */
+    for (unsigned int i = 0; i < patternsStored; ++i)
     {
         pattern_neurons_rate.emplace_back(std::vector<unsigned int>());
         noise_neurons_rate.emplace_back(std::vector<unsigned int>());
@@ -507,6 +536,83 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     /*  Sort - makes next operations more efficient, or I think it does */
     std::sort(neuronsE.begin(), neuronsE.end());
     std::sort(neuronsI.begin(), neuronsI.end());
+
+    /*  I can make this part a function, but that will imply that I'll have to
+     *  do multiple passes over the neuron list which is less efficient
+     *  than what I'm doing now. 
+     *
+     *  For E neurons, for example, I'll first find the rate, then place them
+     *  in categories. At the moment, I'm doing all of this in one single pass
+     *  I see no reason to write a function if that'll just make it less
+     *  efficient.
+    */
+    /*  Get frequencies of inhibitory neurons */
+    std::vector<unsigned int>::iterator search_begin = neuronsI.begin();
+    for(unsigned int i = 1; i <= parameters.NI; ++i)
+    {
+        int rate = 0;
+        rate = (std::upper_bound(search_begin, neuronsI.end(), i) != neuronsI.end()) ?  (std::upper_bound(search_begin, neuronsI.end(), i) - search_begin) : 0;
+
+        search_begin = std::upper_bound(search_begin, neuronsI.end(), i);
+        neuronsI_rate.emplace_back(rate);
+    }
+    /*  We have the inhibitory firing rate! */
+
+    /* Get frequencies of excitatory neurons and classify them into their
+     * groups 
+    */
+    search_begin = neuronsE.begin();
+    for(unsigned int i = 1; i <= parameters.NE; ++i)
+    {
+        int rate = 0;
+        rate = (std::upper_bound(search_begin, neuronsE.end(), i) != neuronsE.end()) ?  (std::upper_bound(search_begin, neuronsE.end(), i) - search_begin) : 0;
+        search_begin = std::upper_bound(search_begin, neuronsE.end(), i);
+
+        for (unsigned int j = 0; j < patternsStored; j++)
+        {
+            /*  It's part of the pattern */
+            if(pattern_neurons_rate[j].size() != patterns[j].size() && std::binary_search(patterns[j].begin(), patterns[j].end(), i))
+            {
+                pattern_neurons_rate[j].emplace_back(rate);
+            }
+            /*  It's not in the pattern and therefore a noise neuron */
+            else
+            {
+                noise_neurons_rate[j].emplace_back(rate);
+            }
+            /* It's a recall neuron - not using this at the moment */
+            if(recall_neurons_rate[j].size() != recalls[j].size() && std::binary_search(recalls[j].begin(), recalls[j].end(), i))
+            {
+                recall_neurons_rate[j].emplace_back(rate);
+            }
+        }
+        /*  All E neurons */
+        neuronsE_rate.emplace_back(rate);
+    }
+
+    converter.str("");
+    converter.clear();
+    converter << parameters.output_file << "-" << chunk_time << ".e.histogram.png"; 
+    PlotHistogram(neuronsE_rate, converter.str(), chunk_time, "blue", "Excitatory");
+    converter.str("");
+    converter.clear();
+    converter << parameters.output_file << "-" << chunk_time << ".i.histogram.png"; 
+    PlotHistogram(neuronsI_rate, converter.str(), chunk_time, "red", "Inhibitory");
+
+    if (plot_this.pattern_graphs)
+    {
+        for (unsigned int i = 0; i < patternsStored; ++i)
+        {
+            converter.str("");
+            converter.clear();
+            converter << parameters.output_file << "-" << chunk_time << ".pattern." << i+1 << ".histogram.png";
+            PlotHistogram(pattern_neurons_rate[i], converter.str(), chunk_time, "green" , "Pattern");
+            converter.str("");
+            converter.clear();
+            converter << parameters.output_file << "-" << chunk_time << ".noise." << i+1 << ".histogram.png"; 
+            PlotHistogram(noise_neurons_rate[i], converter.str(), chunk_time, "black", "Noise");
+        }
+    }
 
     return;
 }		/* -----  end of function MasterFunction  ----- */

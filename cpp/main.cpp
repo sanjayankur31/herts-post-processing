@@ -25,6 +25,7 @@
  *  Extern since it's defined in the header file.
  */
 extern struct param parameters;
+extern struct what_to_plot plot_this;
 
 /*
  * ===  FUNCTION  ======================================================================
@@ -41,7 +42,6 @@ main ( int ac, char *av[] )
     std::vector<std::vector<unsigned int> > recalls;
     std::vector<double> graphing_times;
     unsigned int threads_max = 0;
-    struct what_to_plot plot_this;
     unsigned int task_counter = 0;
     std::vector<std::thread> threadlist;
     std::thread master_graph_thread;
@@ -185,12 +185,12 @@ main ( int ac, char *av[] )
     std::cout << spikes_E.size() <<  " E and " << spikes_I.size() << " I files mapped in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
 
     /*  Main worker loop */
-    for(std::vector<double>::const_iterator i = graphing_times.begin(); i != graphing_times.end(); ++i)
+    for(unsigned int i = 0; i <= graphing_times.size(); ++i)
     {
         /*  Only start a new thread if less than thread_max threads are running */
         if (task_counter < threads_max)
         {
-            threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), *i));
+            threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[i],  i+1));
             task_counter++;
         }
         /*  If thread_max threads are running, wait for them to finish before
