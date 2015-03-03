@@ -218,7 +218,10 @@ main ( int ac, char *av[] )
         }
     }
 
-
+    if(plot_this.snr_graphs)
+    {
+        PlotSNRGraphs(snr_data);
+    }
     /*  End of work */
     global_clock_end = clock();
     std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";

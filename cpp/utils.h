@@ -678,4 +678,45 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
 
     return;
 }		/* -----  end of function MasterFunction  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  PlotSNRGraphs
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+PlotSNRGraphs (std::multimap <double, std::vector<struct SNR> > snr_data)
+{
+    std::ostringstream plot_command;
+    Gnuplot gp;
+    std::vector<std::pair<double, double> > points_means;
+
+    /* Initial set up */
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
+    gp << "set output \"SNR.png\" \n";
+    gp << "set title \"SNR vs number of patterns\" \n";
+
+    for (std::multimap <double, std::vector<struct SNR> >::iterator it = snr_data.begin(); it != snr_data.end(); it++)
+    {
+        double time = it->first;
+        std::vector<struct SNR> snrs = it->second;
+
+        points_means.emplace_back(std::pair<double, double>(time, snrs.front().SNR));
+
+        /*  This will set different point types, but consistently  */
+        int counter = 0;
+        /*  Skip the means, we already have that */
+        for (std::vector<struct SNR>::iterator i = (snrs.begin() + 1); i != snrs.end(); i++)
+        {
+            plot_command << "set label \"\" at " << time << "," << i->SNR << "point pointtype" << counter +1 << "\n";
+        }
+    }
+    gp << plot_command.str();
+    gp << "plot '-' with lines title 'mean SNR' \n";
+    gp.send1d(points_means);
+
+    return;
+}		/* -----  end of function PlotSNRGraphs  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */
