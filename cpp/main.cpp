@@ -27,6 +27,9 @@
 extern struct param parameters;
 extern struct what_to_plot plot_this;
 
+/*  Mutex for my snr_data */
+extern std::mutex snr_data_mutex;
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  main
@@ -41,6 +44,7 @@ main ( int ac, char *av[] )
     std::vector<std::vector<unsigned int> > patterns;
     std::vector<std::vector<unsigned int> > recalls;
     std::vector<double> graphing_times;
+    std::multimap <double, std::vector<struct SNR> > snr_data;
     unsigned int threads_max = 0;
     unsigned int task_counter = 0;
     std::vector<std::thread> threadlist;
@@ -190,7 +194,7 @@ main ( int ac, char *av[] )
         /*  Only start a new thread if less than thread_max threads are running */
         if (task_counter < threads_max)
         {
-            threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[i],  i+1));
+            threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[i],  i+1, std::ref(snr_data)));
             task_counter++;
         }
         /*  If thread_max threads are running, wait for them to finish before

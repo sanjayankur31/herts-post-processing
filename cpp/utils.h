@@ -33,6 +33,7 @@
 #include <ctime>
 #include <cmath>
 #include "gnuplot-iostream/gnuplot-iostream.h"
+#include <mutex>
 
 
 /*-----------------------------------------------------------------------------
@@ -98,6 +99,8 @@ struct what_to_plot
 };
 
 struct what_to_plot plot_this;
+
+std::mutex snr_data_mutex;
 
 /*-----------------------------------------------------------------------------
  *  FUNCTIONS
@@ -515,6 +518,8 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
     return snr;
 }		/* -----  end of function GetSNR  ----- */
 
+
+
 /*
  * ===  FUNCTION  ======================================================================
  *         Name:  MasterFunction
@@ -522,7 +527,7 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
  * =====================================================================================
  */
     void
-MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time, unsigned int patternsStored)
+MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time, unsigned int patternsStored, std::multimap <double, std::vector<struct SNR> > snr_data)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
@@ -651,6 +656,25 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
 
         snrs_at_chunk_time.emplace_back(GetSNR(pattern_neurons_rate[i], recall_neurons_rate[i]));
     }
+    struct SNR snr_means;
+    snr_means.SNR = 0;
+    snr_means.mean = 0;
+    snr_means.std = 0;
+    for (std::vector<struct SNR>::iterator i = snrs_at_chunk_time.begin(); i != snrs_at_chunk_time.end();  ++i)
+    {
+        snr_means.SNR += i->SNR;
+        snr_means.mean += i->mean;
+        snr_means.std += i->mean;
+    }
+    snr_means.SNR /= snrs_at_chunk_time.size();
+    snr_means.mean /= snrs_at_chunk_time.size();
+    snr_means.std /= snrs_at_chunk_time.size();
+
+    /*  Insert means to the starting of the vector */
+    snrs_at_chunk_time.insert(snrs_at_chunk_time.begin(), snr_means);
+
+    std::lock_guard<std::mutex> guard(snr_data_mutex);
+    snr_data.insert(std::pair<double, std::vector<struct SNR> >(chunk_time, snrs_at_chunk_time));
 
     return;
 }		/* -----  end of function MasterFunction  ----- */
