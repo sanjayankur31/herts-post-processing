@@ -7,8 +7,8 @@ CC = g++
 
 all: postprocess
 
-postprocess: postprocess.cpp
-	$(CC) $(CXXFLAGS) postprocess.cpp -o postprocess $(LDFLAGS)
+postprocess: main.cpp utils.h
+	$(CC) $(CXXFLAGS) main.cpp -o postprocess $(LDFLAGS)
 
 install: postprocess
 	mkdir -p ../../../bin/

@@ -238,22 +238,25 @@ ReadTimeToPlotListFromFile ()
     std::vector<double> graphing_times;
     double temp;
     std::ifstream timefilestream;
-    try {
-        timefilestream.open(parameters.plot_times_file);
+    timefilestream.open(parameters.plot_times_file);
+    std::cerr << "Recall times file is: " << parameters.plot_times_file << "\n";
+    if (timefilestream.is_open())
+    {
         while (timefilestream >> temp)
         {
             graphing_times.push_back(temp);
         }
-
     }
-    catch (std::ios_base::failure &e)
+    else
     {
-        std::cerr << e.what() << "\n";
+        std::cerr << "File has not been opened!";
         std::cerr << "Something went wrong reading from file. Autogenerating" << "\n";
         graphing_times = CalculateTimeToPlotList();
     }
 
+    std::cout << "Values read - " << graphing_times.size() << "\n";
     std::sort(graphing_times.begin(), graphing_times.end());
+
     return graphing_times;
 }		/* -----  end of function CalculateTimeToPlotList  ----- */
 
@@ -539,6 +542,8 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     std::ostringstream converter;
     std::vector <struct SNR> snrs_at_chunk_time;
 
+    std::cout << "Chunk time received: " << chunk_time << "\n";
+
     /*  Initialise the 2D vectors */
     /*  Only process stored patterns, not all */
     for (unsigned int i = 0; i < patternsStored; ++i)
@@ -714,8 +719,9 @@ PlotSNRGraphs (std::multimap <double, std::vector<struct SNR> > snr_data)
         }
     }
     gp << plot_command.str();
-    gp << "plot '-' with lines title 'mean SNR' \n";
-    gp.send1d(points_means);
+/*     gp << "plot '-' with lines title 'mean SNR' \n";
+ *     gp.send1d(points_means);
+ */
 
     return;
 }		/* -----  end of function PlotSNRGraphs  ----- */

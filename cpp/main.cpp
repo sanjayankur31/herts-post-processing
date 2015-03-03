@@ -77,6 +77,7 @@ main ( int ac, char *av[] )
         params.add_options()
             ("patternfile_prefix", po::value<std::string>(&(parameters.patternfile_prefix)), "Pattern files prefix")
             ("recallfile_prefix", po::value<std::string>(&(parameters.recallfile_prefix)), "Recall files prefix")
+            ("plot_times_file", po::value<std::string>(&(parameters.plot_times_file)), "Plot times file")
             ("num_pats", po::value<unsigned int>(&(parameters.num_pats)), "number of pattern file(s) to pick from pattern set")
             ("graph_pattern_cols", po::value<unsigned int>(&(parameters.graph_pattern_cols)), "Columns in the per pattern matrices - multiple of 10 please")
             ("NE", po::value<unsigned int>(&(parameters.NE)), "Number of excitatory neurons")
@@ -165,6 +166,9 @@ main ( int ac, char *av[] )
         std::cerr << "Graphing times were not generated. Exiting program." << "\n";
         return -1;
     }
+    for (std::vector<double>::iterator it = graphing_times.begin(); it != graphing_times.end(); it++)
+        std::cout << *it << "\t";
+    std::cout << "\n";
 
     /*  Load patterns and recalls */
     LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
@@ -189,7 +193,7 @@ main ( int ac, char *av[] )
     std::cout << spikes_E.size() <<  " E and " << spikes_I.size() << " I files mapped in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
 
     /*  Main worker loop */
-    for(unsigned int i = 0; i <= graphing_times.size(); ++i)
+    for(unsigned int i = 0; i < graphing_times.size(); ++i)
     {
         /*  Only start a new thread if less than thread_max threads are running */
         if (task_counter < threads_max)
