@@ -683,31 +683,41 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
     gp << "set output \"SNR.png\" \n";
     gp << "set title \"SNR vs number of patterns\" \n";
 
+    std::cout << "All snrs: " << "\n";
     for (std::multimap <double, struct SNR>::iterator it = snr_data.begin(); it != snr_data.end(); it++)
     {
         std::cout << it->first << ":\t" << it->second.SNR << "\n";
-
-#if  0     /* ----- #if 0 : If0Label_1 ----- */
-        double time = it->first;
-        std::vector<struct SNR> snrs = it->second;
-
-        points_means.emplace_back(std::pair<double, double>(time, snrs.front().SNR));
-
-        /*  This will set different point types, but consistently  */
-        int counter = 0;
-        /*  Skip the means, we already have that */
-        for (std::vector<struct SNR>::iterator i = (snrs.begin() + 1); i != snrs.end(); i++)
-        {
-            plot_command << "set label \"\" at " << time << "," << i->SNR << "point pointtype" << counter +1 << "\n";
-        }
-
-#endif     /* ----- #if 0 : If0Label_1 ----- */
     }
-/*     gp << plot_command.str();
- */
-/*     gp << "plot '-' with lines title 'mean SNR' \n";
- *     gp.send1d(points_means);
- */
+
+    unsigned int time_counter = 0;
+    std::cout << "Means snrs: " << "\n";
+    for (unsigned int i = 0; i < parameters.num_pats; i++)
+    {
+        double mean = 0;
+        for(unsigned int j = 0; j <= i; j++)
+        {
+            std::multimap <double, struct SNR>::iterator it = snr_data.begin();
+            std::advance(it, time_counter);
+            time_counter++;
+            mean += ((it->second).SNR);
+            plot_command << "set label \"\" at " << i+1 << "," << (it->second).SNR << " point pointtype " << j +4 << " ;\n";
+        }
+        std::cout << "Total SNR:" << i+1 << ":\t" << mean << "\n";
+        mean /= (i+1);
+        std::cout << i+1 << ":\t" << mean << "\n";
+        points_means.emplace_back(std::pair<double, double>(i+1, mean));
+    }
+
+    gp << plot_command.str();
+
+    gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
+    gp << "set yrange[" << 0 << ":" << 5 << "]; \n";
+    gp << "set ylabel \"SNR\"; \n";
+    gp << "set xtics 1; \n";
+    gp << "set xlabel \"Number of patterns stored\"; \n";
+    gp << "plot '-' with lines title 'mean SNR' \n";
+    gp.send1d(points_means);
+
 
     return;
 }		/* -----  end of function PlotSNRGraphs  ----- */
