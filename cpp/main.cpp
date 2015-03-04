@@ -196,7 +196,7 @@ main ( int ac, char *av[] )
     unsigned int time_counter = 0;
     for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
-        for(unsigned int j = 0; j < i; j++)
+        for(unsigned int j = 0; j <= i; j++)
         {
             /*  If thread_max threads are running, wait for them to finish before
              *  starting a second round.
@@ -237,6 +237,7 @@ main ( int ac, char *av[] )
     }
     threadlist.clear();
 
+    /*  Wait for all your threads to finish first! */
     if(plot_this.snr_graphs)
     {
         std::cout << "Size of snr vector is: " << snr_data.size() << "\n";
