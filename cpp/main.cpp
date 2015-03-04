@@ -44,7 +44,7 @@ main ( int ac, char *av[] )
     std::vector<std::vector<unsigned int> > patterns;
     std::vector<std::vector<unsigned int> > recalls;
     std::vector<double> graphing_times;
-    std::multimap <double, std::vector<struct SNR> > snr_data;
+    std::multimap <double, struct SNR> snr_data;
     unsigned int threads_max = 0;
     unsigned int task_counter = 0;
     std::vector<std::thread> threadlist;
@@ -193,40 +193,56 @@ main ( int ac, char *av[] )
     std::cout << spikes_E.size() <<  " E and " << spikes_I.size() << " I files mapped in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
 
     /*  Main worker loop */
-    for(unsigned int i = 0; i < graphing_times.size(); ++i)
+    unsigned int time_counter = 0;
+    for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
-        /*  Only start a new thread if less than thread_max threads are running */
-        if (task_counter < threads_max)
+        for(unsigned int j = 0; j < i; j++)
         {
-            threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[i],  i+1, std::ref(snr_data)));
+            /*  If thread_max threads are running, wait for them to finish before
+             *  starting a second round.
+             *
+             *  Yes, this can be optimised by using a thread pool but I really
+             *  don't have the patience to look into ThreadPool or a
+             *  boost::thread_group today!
+             */
+            if (!(task_counter < threads_max))
+            {
+                for (std::thread &t: threadlist)
+                {
+                    if(t.joinable())
+                    {
+                        t.join();
+                        task_counter--;
+                    }
+                }
+                threadlist.clear();
+            }
+            /*  Now we can get back to running new threads */
+
+            threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + 1,  j, std::ref(snr_data)));
             task_counter++;
         }
-        /*  If thread_max threads are running, wait for them to finish before
-         *  starting a second round.
-         *
-         *  Yes, this can be optimised by using a thread pool but I really
-         *  don't have the patience to look into ThreadPool or a
-         *  boost::thread_group today!
-         */
-        else
+    }
+    /*  End of work */
+    while(task_counter > 0)
+    {
+        for (std::thread &t: threadlist)
         {
-            for (std::thread &t: threadlist)
+            if(t.joinable())
             {
-                if(t.joinable())
-                {
-                    t.join();
-                    task_counter--;
-                }
+                t.join();
+                task_counter--;
             }
-            threadlist.clear();
         }
     }
+    threadlist.clear();
 
     if(plot_this.snr_graphs)
     {
+        std::cout << "Size of snr vector is: " << snr_data.size() << "\n";
         PlotSNRGraphs(snr_data);
     }
-    /*  End of work */
+
     global_clock_end = clock();
     std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";
     return 0;

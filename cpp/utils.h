@@ -469,6 +469,8 @@ ExtractChunk (char * chunk_start, char * chunk_end )
     void
 PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, double chunk_time, std::string colour, std::string legendLabel)
 {
+
+#if  0     /* ----- #if 0 : If0Label_2 ----- */
     sort(values.begin(), values.end());
     double binwidth = (values.back() - values.front())/values.size();
     Gnuplot gp;
@@ -478,11 +480,13 @@ PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, dou
     gp << "binwidth=" << binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
     gp << "set output \"" << outputFileName << "\n";
-    gp << "set title \"Histogram of firing rates at time \"" << chunk_time << "\"; \n";
-    gp << "plot \"-\" using (bin($1,binwidth)):(1.0) smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\" \n";
+    gp << "set title \"Histogram of firing rates at time " << chunk_time << "\"; \n";
+    gp << "plot '-' using (bin($1,binwidth)):(1.0) smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\" \n";
     gp.send1d(values);
 
     std::cout << outputFileName << "plotted." << "\n";
+#endif     /* ----- #if 0 : If0Label_2 ----- */
+
 }		/* -----  end of function PlotHistogram  ----- */
 
 
@@ -530,28 +534,19 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
  * =====================================================================================
  */
     void
-MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time, unsigned int patternsStored, std::multimap <double, std::vector<struct SNR> > snr_data)
+MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time, unsigned int patternRecalled, std::multimap <double, struct SNR> &snr_data)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
-    std::vector <std::vector<unsigned int> >pattern_neurons_rate;
-    std::vector <std::vector<unsigned int> >noise_neurons_rate;
-    std::vector <std::vector<unsigned int> >recall_neurons_rate;
+    std::vector <unsigned int>pattern_neurons_rate;
+    std::vector <unsigned int>noise_neurons_rate;
+    std::vector <unsigned int>recall_neurons_rate;
     std::vector <unsigned int>neuronsE_rate;
     std::vector <unsigned int>neuronsI_rate;
     std::ostringstream converter;
-    std::vector <struct SNR> snrs_at_chunk_time;
+    struct SNR snr_at_chunk_time;
 
     std::cout << "Chunk time received: " << chunk_time << "\n";
-
-    /*  Initialise the 2D vectors */
-    /*  Only process stored patterns, not all */
-    for (unsigned int i = 0; i < patternsStored; ++i)
-    {
-        pattern_neurons_rate.emplace_back(std::vector<unsigned int>());
-        noise_neurons_rate.emplace_back(std::vector<unsigned int>());
-        recall_neurons_rate.emplace_back(std::vector<unsigned int>());
-    }
 
 #ifdef DEBUG
     std::cout << "[MasterFunction] Thread " << std::this_thread::get_id() << " active." << "\n";
@@ -562,7 +557,9 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
         /*  Excitatory */
         char * chunk_start = BinaryLowerBound(chunk_time - 1., std::ref(spikes_E[i]));
         char * chunk_end = BinaryUpperBound(chunk_time, std::ref(spikes_E[i]));
-        neuronsE = ExtractChunk(chunk_start, chunk_end);
+        std::vector<unsigned int> temp = ExtractChunk(chunk_start, chunk_end);
+        neuronsE.reserve(neuronsE.size() + std::distance (temp.begin(), temp.end()));
+        neuronsE.insert(neuronsE.end(), temp.begin(), temp.end()); 
         if (neuronsE.size() == 0)
         {
             std::cout << chunk_time << " not found in E file "  << i << "!\n";
@@ -572,7 +569,9 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
         /*  Inhibitory */
         chunk_start = BinaryLowerBound(chunk_time - 1., std::ref(spikes_I[i]));
         chunk_end = BinaryUpperBound(chunk_time, std::ref(spikes_I[i]));
-        neuronsI = ExtractChunk(chunk_start, chunk_end);
+        temp = ExtractChunk(chunk_start, chunk_end);
+        neuronsI.reserve(neuronsI.size() + std::distance (temp.begin(), temp.end()));
+        neuronsI.insert(neuronsI.end(), temp.begin(), temp.end()); 
         if (neuronsI.size() == 0)
         {
             std::cout << chunk_time << " not found in I file "  << i << "!\n";
@@ -614,23 +613,20 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
         rate = (std::upper_bound(search_begin, neuronsE.end(), i) != neuronsE.end()) ?  (std::upper_bound(search_begin, neuronsE.end(), i) - search_begin) : 0;
         search_begin = std::upper_bound(search_begin, neuronsE.end(), i);
 
-        for (unsigned int j = 0; j < patternsStored; j++)
+        /*  It's part of the pattern */
+        if(pattern_neurons_rate.size() != patterns[patternRecalled].size() && std::binary_search(patterns[patternRecalled].begin(), patterns[patternRecalled].end(), i))
         {
-            /*  It's part of the pattern */
-            if(pattern_neurons_rate[j].size() != patterns[j].size() && std::binary_search(patterns[j].begin(), patterns[j].end(), i))
-            {
-                pattern_neurons_rate[j].emplace_back(rate);
-            }
-            /*  It's not in the pattern and therefore a noise neuron */
-            else
-            {
-                noise_neurons_rate[j].emplace_back(rate);
-            }
-            /* It's a recall neuron - not using this at the moment */
-            if(recall_neurons_rate[j].size() != recalls[j].size() && std::binary_search(recalls[j].begin(), recalls[j].end(), i))
-            {
-                recall_neurons_rate[j].emplace_back(rate);
-            }
+            pattern_neurons_rate.emplace_back(rate);
+        }
+        /*  It's not in the pattern and therefore a noise neuron */
+        else
+        {
+            noise_neurons_rate.emplace_back(rate);
+        }
+        /* It's a recall neuron - not using this at the moment */
+        if(recall_neurons_rate.size() != recalls[patternRecalled].size() && std::binary_search(recalls[patternRecalled].begin(), recalls[patternRecalled].end(), i))
+        {
+            recall_neurons_rate.emplace_back(rate);
         }
         /*  All E neurons */
         neuronsE_rate.emplace_back(rate);
@@ -645,41 +641,25 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     converter << parameters.output_file << "-" << chunk_time << ".i.histogram.png"; 
     PlotHistogram(neuronsI_rate, converter.str(), chunk_time, "red", "Inhibitory");
 
-    for (unsigned int i = 0; i < patternsStored; ++i)
+    if (plot_this.pattern_graphs)
     {
-        if (plot_this.pattern_graphs)
-        {
-            converter.str("");
-            converter.clear();
-            converter << parameters.output_file << "-" << chunk_time << ".pattern." << i+1 << ".histogram.png";
-            PlotHistogram(pattern_neurons_rate[i], converter.str(), chunk_time, "green" , "Pattern");
-            converter.str("");
-            converter.clear();
-            converter << parameters.output_file << "-" << chunk_time << ".noise." << i+1 << ".histogram.png"; 
-            PlotHistogram(noise_neurons_rate[i], converter.str(), chunk_time, "black", "Noise");
-        }
-
-        snrs_at_chunk_time.emplace_back(GetSNR(pattern_neurons_rate[i], recall_neurons_rate[i]));
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "-" << chunk_time << ".pattern." << patternRecalled << ".histogram.png";
+        PlotHistogram(pattern_neurons_rate, converter.str(), chunk_time, "green" , "Pattern");
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "-" << chunk_time << ".noise." << patternRecalled << ".histogram.png"; 
+        PlotHistogram(noise_neurons_rate, converter.str(), chunk_time, "black", "Noise");
     }
-    struct SNR snr_means;
-    snr_means.SNR = 0;
-    snr_means.mean = 0;
-    snr_means.std = 0;
-    for (std::vector<struct SNR>::iterator i = snrs_at_chunk_time.begin(); i != snrs_at_chunk_time.end();  ++i)
-    {
-        snr_means.SNR += i->SNR;
-        snr_means.mean += i->mean;
-        snr_means.std += i->mean;
-    }
-    snr_means.SNR /= snrs_at_chunk_time.size();
-    snr_means.mean /= snrs_at_chunk_time.size();
-    snr_means.std /= snrs_at_chunk_time.size();
 
-    /*  Insert means to the starting of the vector */
-    snrs_at_chunk_time.insert(snrs_at_chunk_time.begin(), snr_means);
 
+    snr_at_chunk_time = GetSNR(pattern_neurons_rate, noise_neurons_rate);
+    std::cout << "SNR at time " << chunk_time << " is " << snr_at_chunk_time.SNR << "\n";
     std::lock_guard<std::mutex> guard(snr_data_mutex);
-    snr_data.insert(std::pair<double, std::vector<struct SNR> >(chunk_time, snrs_at_chunk_time));
+    snr_data.insert(std::pair<double, struct SNR>(chunk_time, snr_at_chunk_time));
+    std::cout << "SNR complete size " << " is " << snr_data.size() << "\n";
+
 
     return;
 }		/* -----  end of function MasterFunction  ----- */
@@ -692,7 +672,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
  * =====================================================================================
  */
     void
-PlotSNRGraphs (std::multimap <double, std::vector<struct SNR> > snr_data)
+PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
 {
     std::ostringstream plot_command;
     Gnuplot gp;
@@ -703,8 +683,11 @@ PlotSNRGraphs (std::multimap <double, std::vector<struct SNR> > snr_data)
     gp << "set output \"SNR.png\" \n";
     gp << "set title \"SNR vs number of patterns\" \n";
 
-    for (std::multimap <double, std::vector<struct SNR> >::iterator it = snr_data.begin(); it != snr_data.end(); it++)
+    for (std::multimap <double, struct SNR>::iterator it = snr_data.begin(); it != snr_data.end(); it++)
     {
+        std::cout << it->first << ":\t" << it->second.SNR << "\n";
+
+#if  0     /* ----- #if 0 : If0Label_1 ----- */
         double time = it->first;
         std::vector<struct SNR> snrs = it->second;
 
@@ -717,8 +700,11 @@ PlotSNRGraphs (std::multimap <double, std::vector<struct SNR> > snr_data)
         {
             plot_command << "set label \"\" at " << time << "," << i->SNR << "point pointtype" << counter +1 << "\n";
         }
+
+#endif     /* ----- #if 0 : If0Label_1 ----- */
     }
-    gp << plot_command.str();
+/*     gp << plot_command.str();
+ */
 /*     gp << "plot '-' with lines title 'mean SNR' \n";
  *     gp.send1d(points_means);
  */
