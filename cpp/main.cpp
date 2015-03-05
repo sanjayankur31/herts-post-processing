@@ -70,6 +70,7 @@ main ( int ac, char *av[] )
             ("master,m","Plot master time plot - this may take a while?")
             ("pattern,p","Plot pattern plots?")
             ("snr,s","Plot SNR plots?")
+            ("print-snr,S","Print SNR data?")
             ;
 
 
@@ -120,6 +121,10 @@ main ( int ac, char *av[] )
             if (vm.count("snr"))
             {
                 plot_this.snr_graphs = true;
+            }
+            if (vm.count("print-snr"))
+            {
+                parameters.print_snr = true;
             }
         }
 
@@ -242,6 +247,10 @@ main ( int ac, char *av[] )
     {
         std::cout << "Size of snr vector is: " << snr_data.size() << "\n";
         PlotSNRGraphs(snr_data);
+    }
+    if (parameters.print_snr)
+    {
+        PrintSNRDataToFile(snr_data);
     }
 
     global_clock_end = clock();

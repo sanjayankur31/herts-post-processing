@@ -87,6 +87,8 @@ struct param
 
     unsigned int mpi_ranks;
 
+    bool print_snr;
+
 };
 
 struct param parameters;
@@ -692,14 +694,17 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
     gp << "set output \"SNR.png\" \n";
     gp << "set title \"SNR vs number of patterns\" \n";
 
+
+#if  0     /* ----- #if 0 : If0Label_2 ----- */
     std::cout << "All snrs: " << "\n";
     for (std::multimap <double, struct SNR>::iterator it = snr_data.begin(); it != snr_data.end(); it++)
     {
         std::cout << it->first << ":\t" << it->second.SNR << "\n";
     }
+#endif     /* ----- #if 0 : If0Label_2 ----- */
+
 
     unsigned int time_counter = 0;
-    std::cout << "Means snrs: " << "\n";
     for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
         double mean = 0;
@@ -711,7 +716,6 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
             mean += ((it->second).SNR);
             plot_command << "set label \"\" at " << i+1 << "," << (it->second).SNR << " point pointtype " << j +4 << " ;\n";
         }
-        std::cout << "Total SNR:" << i+1 << ":\t" << mean << "\n";
         mean /= (i+1);
         std::cout << i+1 << ":\t" << mean << "\n";
         points_means.emplace_back(std::pair<double, double>(i+1, mean));
@@ -731,4 +735,38 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
 
     return;
 }		/* -----  end of function PlotSNRGraphs  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  PrintSNRDataToFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
+{
+    std::cout << "Printing SNR data to file." << "\n";
+    unsigned int time_counter = 0;
+    std::ofstream snr_stream;
+    snr_stream.open("00-SNR-data.txt");
+
+    for (unsigned int i = 0; i < parameters.num_pats; i++)
+    {
+        double mean = 0;
+        for(unsigned int j = 0; j <= i; j++)
+        {
+            std::multimap <double, struct SNR>::iterator it = snr_data.begin();
+            std::advance(it, time_counter);
+            time_counter++;
+            mean += ((it->second).SNR);
+            snr_stream << (it->second).SNR << ";\n";
+        }
+        mean /= (i+1);
+        snr_stream << mean << "\n";
+    }
+
+    snr_stream.close();
+    return ;
+}		/* -----  end of function PrintSNRDataToFile  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */
