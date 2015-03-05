@@ -43,6 +43,7 @@ function default()
         cp "$configfile" ./$newsimenv.cfg -v
         echo "$ mpiexec -n $mpi_ranks vogels --out $newsimenv"
         LD_LIBRARY_PATH=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/auryn/src/.libs mpiexec -n $mpi_ranks ~/bin/research-bin/vogels --out $newsimenv --config $newsimenv".cfg"
+        rm -f *.netstate
     popd
     echo "Result directory is: $newsimenv"
     tmux set-buffer "$newsimenv"
