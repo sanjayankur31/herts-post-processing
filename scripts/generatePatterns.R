@@ -8,7 +8,7 @@ NI <- 2000
 sparsityE <- 0.1
 recallsize <- 0.25
 
-numberOfRandomPatternFiles <- 100
+numberOfRandomPatternFiles <- 60
 patternFilePrefix <- "randomPatternFile-"
 recallFilePrefix <- "recallPatternFile-"
 

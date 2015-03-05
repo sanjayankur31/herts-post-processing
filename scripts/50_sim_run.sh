@@ -19,8 +19,17 @@
 # File : 
 #
 
-for i in `seq 1 10`:
+for i in `seq 1 50`:
 do
+    mkdir ~/dump/patternFilesTemp/
+    pushd ~/dump/patternFilesTemp/
+        Rscript ~/bin/research-scripts/generatePatterns.R
+    popd
+    # make sure the configuration file is up to date
     ~/bin/research-scripts/run_vogels_mpich.sh
     pushd `tmux show-buffer`
-        ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg 
+        ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S && rm *.ras *.netstate -f
+    popd
+done
+
+echo "50 sim run finished. Post process away!"
