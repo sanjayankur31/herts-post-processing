@@ -469,23 +469,32 @@ ExtractChunk (char * chunk_start, char * chunk_end )
     void
 PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, double chunk_time, std::string colour, std::string legendLabel)
 {
+#if  0     /* ----- #if 0 : If0Label_1 ----- */
+    std::vector<std::pair<unsigned int, unsigned int> > plot_hack;
 
-#if  0     /* ----- #if 0 : If0Label_2 ----- */
     sort(values.begin(), values.end());
+
+    for (std::vector<unsigned int>::iterator it = values.begin(); it != values.end(); it++)
+        plot_hack.emplace_back(std::pair<unsigned int, unsigned int>(*it, *it));
+
+
     double binwidth = (values.back() - values.front())/values.size();
     Gnuplot gp;
     gp << "set style fill solid 0.5; set tics out nomirror; \n"; 
-    gp << "set xrange [" << values.front() << ":" << values.back() << "];\n";
+/*     gp << "set xrange [" << values.front() << ":" << values.back() << "];\n";
+ */
+    gp << "set xrange [0:];\n";
     gp << "set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; \n";
     gp << "binwidth=" << binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
     gp << "set output \"" << outputFileName << "\n";
     gp << "set title \"Histogram of firing rates at time " << chunk_time << "\"; \n";
-    gp << "plot '-' using (bin($1,binwidth)):(1.0) smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\" \n";
-    gp.send1d(values);
+    gp << "plot '-' using (bin($1,binwidth)):(1.0) smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\"; \n";
+    gp.send1d(plot_hack);
 
     std::cout << outputFileName << "plotted." << "\n";
-#endif     /* ----- #if 0 : If0Label_2 ----- */
+#endif     /* ----- #if 0 : If0Label_1 ----- */
+
 
 }		/* -----  end of function PlotHistogram  ----- */
 
@@ -713,6 +722,7 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
     gp << "set yrange[" << 0 << ":" << 5 << "]; \n";
     gp << "set ylabel \"SNR\"; \n";
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
     gp << "set xtics 1; \n";
     gp << "set xlabel \"Number of patterns stored\"; \n";
     gp << "plot '-' with lines title 'mean SNR' \n";
