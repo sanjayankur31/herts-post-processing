@@ -724,7 +724,7 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
     gp << plot_command.str();
 
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
-    gp << "set yrange[" << 0 << ":" << 5 << "]; \n";
+    gp << "set yrange[" << 0 << ":]; \n";
     gp << "set ylabel \"SNR\"; \n";
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
     gp << "set xtics 1; \n";
