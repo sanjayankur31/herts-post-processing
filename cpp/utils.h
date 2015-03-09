@@ -30,6 +30,7 @@
 #include <boost/iostreams/device/mapped_file.hpp>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
 #include <ctime>
 #include <cmath>
 #include "gnuplot-iostream/gnuplot-iostream.h"
@@ -98,6 +99,7 @@ struct what_to_plot
     bool master;
     bool pattern_graphs;
     bool snr_graphs;
+    bool from_file;
 };
 
 struct what_to_plot plot_this;
@@ -774,4 +776,73 @@ PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
     snr_stream.close();
     return ;
 }		/* -----  end of function PrintSNRDataToFile  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateSNRPlotFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateSNRPlotFromFile ( )
+{
+    std::ostringstream plot_command;
+    Gnuplot gp;
+    std::vector<std::pair<double, double> > points_means;
+    unsigned int max_point = 0;
+
+    std::ifstream file_stream;
+    file_stream.open("00-SNR-data.txt", std::ifstream::in);
+    unsigned int numlines = std::count(std::istreambuf_iterator<char>(file_stream),std::istreambuf_iterator<char>(), '\n');
+    file_stream.close();
+
+    if( (parameters.num_pats * (parameters.num_pats + 3)/2) != numlines)
+    {
+        std::cerr << "initial check failed. numlines = " << numlines << " numpats = " << parameters.num_pats << "\n";
+    }
+
+
+    file_stream.open("00-SNR-data.txt", std::ifstream::in);
+
+    /* Initial set up */
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
+    gp << "set output \"SNR.png\" \n";
+    gp << "set title \"SNR vs number of patterns - " << parameters.output_file << "\" \n";
+
+
+    for (unsigned int i = 0; i < parameters.num_pats; i++)
+    {
+        double mean_snr = 0.;
+        for(unsigned int j = 0; j <= i; j++)
+        {
+            double snr_value = 0.;
+            file_stream >> snr_value;
+            plot_command << "set label \"\" at " << i+1 << "," << snr_value << " point pointtype " << j +4 << " ;\n";
+            if (snr_value > max_point)
+                max_point = ceil(snr_value);
+        }
+        file_stream >> mean_snr;
+        std::cout << i+1 << ":\t" << mean_snr << "\n";
+        points_means.emplace_back(std::pair<double, double>(i+1, mean_snr));
+    }
+
+    file_stream.close();
+
+    gp << plot_command.str();
+
+    gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
+    gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
+    gp << "set ylabel \"SNR\"; \n";
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
+    gp << "set xtics 1; \n";
+    gp << "set ytics 1; \n";
+    gp << "set grid; \n";
+    gp << "set xlabel \"Number of patterns stored\"; \n";
+    gp << "plot '-' with lines title 'mean SNR' \n";
+    gp.send1d(points_means);
+
+
+    return;
+}		/* -----  end of function GenerateSNRPlotFromFile  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */

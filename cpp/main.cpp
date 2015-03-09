@@ -71,6 +71,7 @@ main ( int ac, char *av[] )
             ("pattern,p","Plot pattern plots?")
             ("snr,s","Plot SNR plots?")
             ("print-snr,S","Print SNR data?")
+            ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
             ;
 
 
@@ -122,10 +123,15 @@ main ( int ac, char *av[] )
             {
                 plot_this.snr_graphs = true;
             }
+            if (vm.count("generate-snr-plot-from-file"))
+            {
+                plot_this.from_file = true;
+            }
             if (vm.count("print-snr"))
             {
                 parameters.print_snr = true;
             }
+            
         }
 
         std::ifstream ifs(parameters.config_file.c_str());
@@ -154,106 +160,114 @@ main ( int ac, char *av[] )
     /*-----------------------------------------------------------------------------
      *  MAIN LOGIC BEGINS HERE
      *-----------------------------------------------------------------------------*/
-    /*  At the most, use 20 threads, other wise WAIT */
-    threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
-    std::cout << "Maximum number of threads in use: " << threads_max << "\n";
-
-    /* Let this run independently. It takes quite a while */
-    if (plot_this.master)
+    if(plot_this.from_file)
     {
-        master_graph_thread = std::thread (PlotMasterGraph);
+        /*  No post processing, we have a file, we'll plot from it */
+        GenerateSNRPlotFromFile();
     }
-
-    /*  Get plot times */
-    graphing_times = ReadTimeToPlotListFromFile();
-    if(graphing_times.size() == 0)
+    else
     {
-        std::cerr << "Graphing times were not generated. Exiting program." << "\n";
-        return -1;
-    }
-    for (std::vector<double>::iterator it = graphing_times.begin(); it != graphing_times.end(); it++)
-        std::cout << *it << "\t";
-    std::cout << "\n";
+        /*  At the most, use 20 threads, other wise WAIT */
+        threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
+        std::cout << "Maximum number of threads in use: " << threads_max << "\n";
 
-    /*  Load patterns and recalls */
-    LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
-
-    /*  Load memory mapped files */
-    clock_start = clock();
-    for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
-    {
-        converter.str("");
-        converter.clear();
-        converter << parameters.output_file << "." << i << "_e.ras";
-        spikes_E.emplace_back(boost::iostreams::mapped_file_source());
-        spikes_E[i].open(converter.str());
-
-        converter.str("");
-        converter.clear();
-        converter << parameters.output_file << "." << i << "_i.ras";
-        spikes_I.emplace_back(boost::iostreams::mapped_file_source());
-        spikes_I[i].open(converter.str());
-    }
-    clock_end = clock();
-    std::cout << spikes_E.size() <<  " E and " << spikes_I.size() << " I files mapped in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
-
-    /*  Main worker loop */
-    unsigned int time_counter = 0;
-    for (unsigned int i = 0; i < parameters.num_pats; i++)
-    {
-        for(unsigned int j = 0; j <= i; j++)
+        /* Let this run independently. It takes quite a while */
+        if (plot_this.master)
         {
-            /*  If thread_max threads are running, wait for them to finish before
-             *  starting a second round.
-             *
-             *  Yes, this can be optimised by using a thread pool but I really
-             *  don't have the patience to look into ThreadPool or a
-             *  boost::thread_group today!
-             */
-            if (!(task_counter < threads_max))
+            master_graph_thread = std::thread (PlotMasterGraph);
+        }
+
+        /*  Get plot times */
+        graphing_times = ReadTimeToPlotListFromFile();
+        if(graphing_times.size() == 0)
+        {
+            std::cerr << "Graphing times were not generated. Exiting program." << "\n";
+            return -1;
+        }
+        for (std::vector<double>::iterator it = graphing_times.begin(); it != graphing_times.end(); it++)
+            std::cout << *it << "\t";
+        std::cout << "\n";
+
+        /*  Load patterns and recalls */
+        LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
+
+        /*  Load memory mapped files */
+        clock_start = clock();
+        for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
+        {
+            converter.str("");
+            converter.clear();
+            converter << parameters.output_file << "." << i << "_e.ras";
+            spikes_E.emplace_back(boost::iostreams::mapped_file_source());
+            spikes_E[i].open(converter.str());
+
+            converter.str("");
+            converter.clear();
+            converter << parameters.output_file << "." << i << "_i.ras";
+            spikes_I.emplace_back(boost::iostreams::mapped_file_source());
+            spikes_I[i].open(converter.str());
+        }
+        clock_end = clock();
+        std::cout << spikes_E.size() <<  " E and " << spikes_I.size() << " I files mapped in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
+
+        /*  Main worker loop */
+        unsigned int time_counter = 0;
+        for (unsigned int i = 0; i < parameters.num_pats; i++)
+        {
+            for(unsigned int j = 0; j <= i; j++)
             {
-                for (std::thread &t: threadlist)
+                /*  If thread_max threads are running, wait for them to finish before
+                 *  starting a second round.
+                 *
+                 *  Yes, this can be optimised by using a thread pool but I really
+                 *  don't have the patience to look into ThreadPool or a
+                 *  boost::thread_group today!
+                 */
+                if (!(task_counter < threads_max))
                 {
-                    if(t.joinable())
+                    for (std::thread &t: threadlist)
                     {
-                        t.join();
-                        task_counter--;
+                        if(t.joinable())
+                        {
+                            t.join();
+                            task_counter--;
+                        }
                     }
+                    threadlist.clear();
                 }
-                threadlist.clear();
-            }
-            /*  Now we can get back to running new threads */
+                /*  Now we can get back to running new threads */
 
-            threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + 1,  j, std::ref(snr_data)));
-            task_counter++;
+                threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + 1,  j, std::ref(snr_data)));
+                task_counter++;
+            }
         }
-    }
-    /*  End of work */
-    while(task_counter > 0)
-    {
-        for (std::thread &t: threadlist)
+        /*  End of work */
+        while(task_counter > 0)
         {
-            if(t.joinable())
+            for (std::thread &t: threadlist)
             {
-                t.join();
-                task_counter--;
+                if(t.joinable())
+                {
+                    t.join();
+                    task_counter--;
+                }
             }
         }
-    }
-    threadlist.clear();
+        threadlist.clear();
 
-    /*  Wait for all your threads to finish first! */
-    if(plot_this.snr_graphs)
-    {
-        std::cout << "Size of snr vector is: " << snr_data.size() << "\n";
-        PlotSNRGraphs(snr_data);
-    }
-    if (parameters.print_snr)
-    {
-        PrintSNRDataToFile(snr_data);
-    }
+        /*  Wait for all your threads to finish first! */
+        if(plot_this.snr_graphs)
+        {
+            std::cout << "Size of snr vector is: " << snr_data.size() << "\n";
+            PlotSNRGraphs(snr_data);
+        }
+        if (parameters.print_snr)
+        {
+            PrintSNRDataToFile(snr_data);
+        }
 
-    global_clock_end = clock();
-    std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";
+        global_clock_end = clock();
+        std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";
+    }
     return 0;
 }				/* ----------  end of function main  ---------- */
