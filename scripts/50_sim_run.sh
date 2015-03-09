@@ -19,7 +19,7 @@
 # File : 
 #
 
-for i in `seq 1 50`:
+for i in `seq 1 10`:
 do
     mkdir ~/dump/patternFilesTemp/
     pushd ~/dump/patternFilesTemp/
@@ -28,7 +28,7 @@ do
     # make sure the configuration file is up to date
     ~/bin/research-scripts/run_vogels_mpich.sh
     pushd `tmux show-buffer`
-        ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S && rm *.ras *.netstate *.weightinfo *.rate *.log -f
+        ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S -s && rm *.ras *.netstate *.weightinfo *.rate *.log -f
     popd
     rm -rf ~/dump/patternFilesTemp/ && sleep 1
 done
