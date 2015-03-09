@@ -688,11 +688,12 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
     std::ostringstream plot_command;
     Gnuplot gp;
     std::vector<std::pair<double, double> > points_means;
+    unsigned int max_point = 0;
 
     /* Initial set up */
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
     gp << "set output \"SNR.png\" \n";
-    gp << "set title \"SNR vs number of patterns\" \n";
+    gp << "set title \"SNR vs number of patterns - " << parameters.output_file << "\" \n";
 
 
 #if  0     /* ----- #if 0 : If0Label_2 ----- */
@@ -715,6 +716,8 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
             time_counter++;
             mean += ((it->second).SNR);
             plot_command << "set label \"\" at " << i+1 << "," << (it->second).SNR << " point pointtype " << j +4 << " ;\n";
+            if ((it->second).SNR > max_point)
+                max_point = ceil((it->second).SNR);
         }
         mean /= (i+1);
         std::cout << i+1 << ":\t" << mean << "\n";
@@ -724,10 +727,12 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
     gp << plot_command.str();
 
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
-    gp << "set yrange[" << 0 << ":]; \n";
+    gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
     gp << "set ylabel \"SNR\"; \n";
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
     gp << "set xtics 1; \n";
+    gp << "set ytics 1; \n";
+    gp << "set grid; \n";
     gp << "set xlabel \"Number of patterns stored\"; \n";
     gp << "plot '-' with lines title 'mean SNR' \n";
     gp.send1d(points_means);
@@ -760,7 +765,7 @@ PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
             std::advance(it, time_counter);
             time_counter++;
             mean += ((it->second).SNR);
-            snr_stream << (it->second).SNR << ";\n";
+            snr_stream << (it->second).SNR << "\n";
         }
         mean /= (i+1);
         snr_stream << mean << "\n";

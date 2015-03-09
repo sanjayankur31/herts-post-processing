@@ -30,6 +30,7 @@ do
     pushd `tmux show-buffer`
         ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S && rm *.ras *.netstate *.weightinfo *.rate *.log -f
     popd
+    rm -rf ~/dump/patternFilesTemp/ && sleep 1
 done
 
 echo "50 sim run finished. Post process away!"
