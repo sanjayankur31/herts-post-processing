@@ -19,7 +19,8 @@
 # File : 
 #
 
-for i in `seq 1 10`:
+runs=10
+for i in `seq 1 $runs`:
 do
     mkdir ~/dump/patternFilesTemp/
     pushd ~/dump/patternFilesTemp/
@@ -30,7 +31,8 @@ do
     pushd `tmux show-buffer`
         ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S -s && rm *.ras *.netstate *.weightinfo *.rate *.log -f
     popd
+    echo `tmux show-buffer` >> dirs-created.txt
     rm -rf ~/dump/patternFilesTemp/ && sleep 1
 done
 
-echo "50 sim run finished. Post process away!"
+echo "$runs simulations finished. Post process away!"
