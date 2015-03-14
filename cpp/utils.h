@@ -100,6 +100,7 @@ struct what_to_plot
     bool pattern_graphs;
     bool snr_graphs;
     bool from_file;
+    bool cumVSover;
 };
 
 struct what_to_plot plot_this;
@@ -785,15 +786,14 @@ PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
  * =====================================================================================
  */
     void
-GenerateSNRPlotFromFile ( )
+GenerateSNRPlotFromFile (Gnuplot &gp, std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
 {
     std::ostringstream plot_command;
-    Gnuplot gp;
     std::vector<std::pair<double, double> > points_means;
     unsigned int max_point = 0;
 
     std::ifstream file_stream;
-    file_stream.open("00-SNR-data.txt", std::ifstream::in);
+    file_stream.open(dataFile.c_str() , std::ifstream::in);
     unsigned int numlines = std::count(std::istreambuf_iterator<char>(file_stream),std::istreambuf_iterator<char>(), '\n');
     file_stream.close();
 
@@ -803,7 +803,7 @@ GenerateSNRPlotFromFile ( )
     }
 
 
-    file_stream.open("00-SNR-data.txt", std::ifstream::in);
+    file_stream.open(dataFile.c_str(), std::ifstream::in);
 
     /* Initial set up */
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
@@ -818,7 +818,7 @@ GenerateSNRPlotFromFile ( )
         {
             double snr_value = 0.;
             file_stream >> snr_value;
-            plot_command << "set label \"\" at " << i+1 << "," << snr_value << " point pointtype " << j +4 << " ;\n";
+            plot_command << "set label \"\" at " << i+1 << "," << snr_value << " point pointtype " << j+1 << " lc " << lc << " ;\n";
             if (snr_value > max_point)
                 max_point = ceil(snr_value);
         }
@@ -839,9 +839,8 @@ GenerateSNRPlotFromFile ( )
     gp << "set ytics 1; \n";
     gp << "set grid; \n";
     gp << "set xlabel \"Number of patterns stored\"; \n";
-    gp << "plot '-' with lines title 'mean SNR' \n";
+    gp << "plot '-' with lines title 'mean SNR - " << addendum.c_str() << "' lc " << lc << "; \n";
     gp.send1d(points_means);
-
 
     return;
 }		/* -----  end of function GenerateSNRPlotFromFile  ----- */

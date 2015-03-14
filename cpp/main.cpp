@@ -72,6 +72,7 @@ main ( int ac, char *av[] )
             ("snr,s","Plot SNR plots?")
             ("print-snr,S","Print SNR data?")
             ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
+            ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative vs overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
             ;
 
 
@@ -127,6 +128,10 @@ main ( int ac, char *av[] )
             {
                 plot_this.from_file = true;
             }
+            if (vm.count("generate-cum-vs-over-snr-plot-from-file"))
+            {
+                plot_this.cumVSover = true;
+            }
             if (vm.count("print-snr"))
             {
                 parameters.print_snr = true;
@@ -163,9 +168,16 @@ main ( int ac, char *av[] )
     if(plot_this.from_file)
     {
         /*  No post processing, we have a file, we'll plot from it */
-        GenerateSNRPlotFromFile();
+        Gnuplot gp;
+        GenerateSNRPlotFromFile(std::ref(gp), "00-SNR-data.txt");
     }
-    else
+    if(plot_this.cumVSover)
+    {
+        Gnuplot gp;
+        GenerateSNRPlotFromFile(std::ref(gp), "00-SNR-data-cumulative.txt", "cumulative", 1);
+        GenerateSNRPlotFromFile(std::ref(gp), "00-SNR-data-overwritten.txt", "overwritten", 2);
+    }
+    if(!plot_this.from_file && ! plot_this.cumVSover)
     {
         /*  At the most, use 20 threads, other wise WAIT */
         threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
