@@ -19,7 +19,7 @@
 # File : 
 #
 
-runs=10
+runs="$1"
 for i in `seq 1 $runs`:
 do
     mkdir ~/dump/patternFilesTemp/
