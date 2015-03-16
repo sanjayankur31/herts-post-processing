@@ -757,24 +757,43 @@ PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
     std::cout << "Printing SNR data to file." << "\n";
     unsigned int time_counter = 0;
     std::ofstream snr_stream;
+    std::ofstream mean_stream;
+    std::ofstream std_stream;
     snr_stream.open("00-SNR-data.txt");
+    mean_stream.open("00-mean-data.txt");
+    std_stream.open("00-std-data.txt");
 
     for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
-        double mean = 0;
+        struct SNR means;
+        means.SNR = 0;
+        means.std = 0;
+        means.mean = 0;
         for(unsigned int j = 0; j <= i; j++)
         {
             std::multimap <double, struct SNR>::iterator it = snr_data.begin();
             std::advance(it, time_counter);
             time_counter++;
-            mean += ((it->second).SNR);
+
+            means.SNR += ((it->second).SNR);
+            means.mean += ((it->second).mean);
+            means.std += ((it->second).std);
+
             snr_stream << (it->second).SNR << "\n";
+            mean_stream << (it->second).mean << "\n";
+            std_stream << (it->second).std << "\n";
         }
-        mean /= (i+1);
-        snr_stream << mean << "\n";
+        means.SNR /= (i+1);
+        means.mean /= (i+1);
+        means.std /= (i+1);
+        snr_stream << means.SNR << "\n";
+        mean_stream << means.mean << "\n";
+        std_stream << means.std << "\n";
     }
 
     snr_stream.close();
+    mean_stream.close();
+    std_stream.close();
     return ;
 }		/* -----  end of function PrintSNRDataToFile  ----- */
 
