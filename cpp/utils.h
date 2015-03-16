@@ -101,6 +101,7 @@ struct what_to_plot
     bool snr_graphs;
     bool from_file;
     bool cumVSover;
+    std::vector <double> wPats;
 };
 
 struct what_to_plot plot_this;
@@ -805,8 +806,9 @@ PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
  * =====================================================================================
  */
     void
-GenerateSNRPlotFromFile (Gnuplot &gp, std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+GenerateSNRPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
 {
+    Gnuplot gp;
     std::ostringstream plot_command;
     std::vector<std::pair<double, double> > points_means;
     unsigned int max_point = 0;
@@ -863,4 +865,80 @@ GenerateSNRPlotFromFile (Gnuplot &gp, std::string dataFile, std::string addendum
 
     return;
 }		/* -----  end of function GenerateSNRPlotFromFile  ----- */
+
+    void
+GenerateMultiSNRPlotFromFile (std::vector<std::pair<std::string, std::string> > inputs)
+{
+    Gnuplot gp;
+    std::ostringstream plot_command;
+    std::ostringstream line_command;
+    std::vector<std::vector<std::pair<double, double> > > all_points_means;
+    unsigned int max_point = 0;
+    unsigned int lc = 0;
+
+    /* Initial set up */
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
+    gp << "set output \"SNR-multi.png\" \n";
+    gp << "set title \"SNR vs number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set ylabel \"SNR\"; \n";
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
+    gp << "set xtics 1; \n";
+    gp << "set ytics 1; \n";
+    gp << "set grid; \n";
+    gp << "set xlabel \"Number of patterns stored\"; \n";
+    line_command << "plot ";
+
+    for (std::vector<std::pair<std::string, std::string> >::iterator it = inputs.begin(); it != inputs.end(); it++)
+    {
+        lc++;
+        std::ifstream file_stream;
+        std::string dataFile(it->first);
+        file_stream.open(dataFile.c_str() , std::ifstream::in);
+        unsigned int numlines = std::count(std::istreambuf_iterator<char>(file_stream),std::istreambuf_iterator<char>(), '\n');
+        file_stream.close();
+        std::string addendum(it->second);
+        std::vector<std::pair<double, double> > points_means;
+
+        if( (parameters.num_pats * (parameters.num_pats + 3)/2) != numlines)
+        {
+            std::cerr << "initial check failed. numlines = " << numlines << " numpats = " << parameters.num_pats << "\n";
+        }
+
+        file_stream.open(dataFile.c_str(), std::ifstream::in);
+
+        for (unsigned int i = 0; i < parameters.num_pats; i++)
+        {
+            double mean_snr = 0.;
+            for(unsigned int j = 0; j <= i; j++)
+            {
+                double snr_value = 0.;
+                file_stream >> snr_value;
+                plot_command << "set label \"\" at " << i+1 << "," << snr_value << " point pointtype " << j+1 << " lc " << lc << " ;\n";
+                if (snr_value > max_point)
+                    max_point = ceil(snr_value);
+            }
+            file_stream >> mean_snr;
+            std::cout << i+1 << ":\t" << mean_snr << "\n";
+            points_means.emplace_back(std::pair<double, double>(i+1, mean_snr));
+        }
+        all_points_means.emplace_back(points_means);
+        points_means.clear();
+        line_command << "'-' with lines title 'mean SNR - " << addendum.c_str() << "' lc " << lc << ", ";
+        file_stream.close();
+    }
+
+
+    gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
+    gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
+    gp << plot_command.str();
+    gp << line_command.str();
+    gp << " ;\n";
+
+    for (std::vector<std::vector<std::pair<double,double> > >::iterator it = all_points_means.begin(); it != all_points_means.end(); it++)
+        gp.send1d(*it);
+
+    return;
+}
+
+
 #endif   /* ----- #ifndef utils_INC  ----- */

@@ -73,6 +73,7 @@ main ( int ac, char *av[] )
             ("print-snr,S","Print SNR data?")
             ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
             ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative vs overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
+            ("snr-for-multiple-pats,W", po::value<std::vector<double> >(&(plot_this.wPats))-> multitoken(), "comma separated list of times for each stage in order")
             ;
 
 
@@ -168,16 +169,34 @@ main ( int ac, char *av[] )
     if(plot_this.from_file)
     {
         /*  No post processing, we have a file, we'll plot from it */
-        Gnuplot gp;
-        GenerateSNRPlotFromFile(std::ref(gp), "00-SNR-data.txt");
+        GenerateSNRPlotFromFile("00-SNR-data.txt");
     }
     if(plot_this.cumVSover)
     {
-        Gnuplot gp;
-        GenerateSNRPlotFromFile(std::ref(gp), "00-SNR-data-cumulative.txt", "cumulative", 1);
-        GenerateSNRPlotFromFile(std::ref(gp), "00-SNR-data-overwritten.txt", "overwritten", 2);
+        std::vector<std::pair<std::string, std::string> > inputs;
+        inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-cumulative.txt", "cumulative"));
+        inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-overwritten.txt", "overwritten"));
+        GenerateMultiSNRPlotFromFile(inputs);
     }
-    if(!plot_this.from_file && ! plot_this.cumVSover)
+    if(plot_this.wPats.size() != 0)
+    {
+        std::vector<std::pair<std::string, std::string> > inputs;
+        std::ostringstream converter;
+        std::ostringstream converter1;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-SNR-data-w-" << *it << ".txt";
+            std::cout << converter.str();
+            converter1 << "w_pat = " << (*it)*0.3 ;
+            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
+        }
+        GenerateMultiSNRPlotFromFile(inputs);
+    }
+    if(!plot_this.from_file && ! plot_this.cumVSover && plot_this.wPats.size() == 0)
     {
         /*  At the most, use 20 threads, other wise WAIT */
         threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
