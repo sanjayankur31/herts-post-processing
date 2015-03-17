@@ -931,7 +931,7 @@ GenerateMultiSNRPlotFromFile (std::vector<std::pair<std::string, std::string> > 
         }
         all_points_means.emplace_back(points_means);
         points_means.clear();
-        line_command << "'-' with lines title 'mean SNR - " << addendum.c_str() << "' lc " << lc << ", ";
+        line_command << "'-' with lines title 'mean SNR - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
         file_stream.close();
     }
 
@@ -1036,9 +1036,9 @@ GenerateSNRvsWPatFromFile ( std::vector<std::pair<std::string, double> > inputs 
 
     gp << converter.str();
 
-    line_command << "plot '-' with linespoints title 'max SNR means'  ls 1 lc 1, ";
-    line_command << "'-' with linespoints title 'mean SNR means' ls 2 lc 2, ";
-    line_command << "'-' with linespoints title 'min SNR means' ls 3 lc 3; \n";
+    line_command << "plot '-' with linespoints title 'max SNR means'  ls 1 lc 1 lw 2, ";
+    line_command << "'-' with linespoints title 'mean SNR means' ls 2 lc 2 lw 2, ";
+    line_command << "'-' with linespoints title 'min SNR means' ls 3 lc 3 lw 2; \n";
 
 /*     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
  */
