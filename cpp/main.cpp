@@ -73,6 +73,7 @@ main ( int ac, char *av[] )
             ("print-snr,S","Print SNR data?")
             ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
             ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative vs overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
+            ("generate-snr-vs-wpats-plot-from-file,w","Also generate snr vs wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("snr-for-multiple-pats,W", po::value<std::vector<double> >(&(plot_this.wPats))-> multitoken(), "comma separated list of times for each stage in order")
             ;
 
@@ -133,11 +134,14 @@ main ( int ac, char *av[] )
             {
                 plot_this.cumVSover = true;
             }
+            if (vm.count("generate-snr-vs-wpats-plot-from-file"))
+            {
+                plot_this.snrVSwPats = true;
+            }
             if (vm.count("print-snr"))
             {
                 parameters.print_snr = true;
             }
-            
         }
 
         std::ifstream ifs(parameters.config_file.c_str());
@@ -195,6 +199,20 @@ main ( int ac, char *av[] )
             inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
         }
         GenerateMultiSNRPlotFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.snrVSwPats)
+    {
+        std::vector<std::pair<std::string, double> > inputs;
+        std::ostringstream converter;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-SNR-data-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateSNRvsWPatFromFile(inputs);
     }
     if(!plot_this.from_file && ! plot_this.cumVSover && plot_this.wPats.size() == 0)
     {

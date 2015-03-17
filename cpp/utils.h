@@ -89,7 +89,6 @@ struct param
     unsigned int mpi_ranks;
 
     bool print_snr;
-
 };
 
 struct param parameters;
@@ -102,6 +101,7 @@ struct what_to_plot
     bool from_file;
     bool cumVSover;
     std::vector <double> wPats;
+    bool snrVSwPats;
 };
 
 struct what_to_plot plot_this;
@@ -866,6 +866,14 @@ GenerateSNRPlotFromFile (std::string dataFile, std::string addendum = "", unsign
     return;
 }		/* -----  end of function GenerateSNRPlotFromFile  ----- */
 
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateMultiSNRPlotFromFile
+ *  Description:  
+ * =====================================================================================
+ */
     void
 GenerateMultiSNRPlotFromFile (std::vector<std::pair<std::string, std::string> > inputs)
 {
@@ -941,4 +949,105 @@ GenerateMultiSNRPlotFromFile (std::vector<std::pair<std::string, std::string> > 
 }
 
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateSNRvsWPatFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateSNRvsWPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
+{
+    Gnuplot gp;
+    std::ostringstream line_command;
+    std::ostringstream converter;
+    unsigned int lc = 0;
+    std::vector<std::pair<double,double> > max_means;
+    std::vector<std::pair<double,double> > mean_means;
+    std::vector<std::pair<double,double> > min_means;
+
+    /* Initial set up */
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
+    gp << "set output \"SNR-w_pat.png\" \n";
+    gp << "set title \"SNR vs w_pat - " << parameters.output_file << "\" \n";
+    gp << "set ylabel \"SNR\"; \n";
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
+    gp << "set yrange [0:] \n";
+    gp << "set grid; \n";
+    gp << "set xlabel \"w_pat\"; \n";
+
+    for (std::vector<std::pair<std::string, double> >::iterator it = inputs.begin(); it != inputs.end(); it++)
+    {
+        lc++;
+        std::ifstream file_stream;
+        std::string dataFile(it->first);
+        file_stream.open(dataFile.c_str() , std::ifstream::in);
+        unsigned int numlines = std::count(std::istreambuf_iterator<char>(file_stream),std::istreambuf_iterator<char>(), '\n');
+        file_stream.close();
+        double w_pat = it->second;
+        std::vector<double> means;
+
+        if( (parameters.num_pats * (parameters.num_pats + 3)/2) != numlines)
+        {
+            std::cerr << "initial check failed. numlines = " << numlines << " numpats = " << parameters.num_pats << "\n";
+        }
+
+        file_stream.open(dataFile.c_str(), std::ifstream::in);
+
+        for (unsigned int i = 0; i < parameters.num_pats; i++)
+        {
+            double mean_snr = 0.;
+            for(unsigned int j = 0; j <= i; j++)
+            {
+                /*  I don't need the individual values here */
+                double snr_value = 0.;
+                file_stream >> snr_value;
+            }
+            file_stream >> mean_snr;
+            std::cout << i+1 << ":\t" << mean_snr << "\n";
+            means.emplace_back(mean_snr);
+        }
+        double max_mean = *(std::max_element(means.begin(), means.end()));
+        double min_mean = *(std::min_element(means.begin(), means.end()));
+        double sum_mean = std::accumulate(means.begin(), means.end(),0.0);
+        double mean_mean = sum_mean/means.size();
+
+        max_means.emplace_back(std::pair<double, double>(w_pat, max_mean));
+        min_means.emplace_back(std::pair<double, double>(w_pat, min_mean));
+        mean_means.emplace_back(std::pair<double, double>(w_pat, mean_mean));
+        means.clear();
+
+        file_stream.close();
+    }
+
+    converter << "set xtics ( ";
+    unsigned int counter = 1;
+    for (std::vector<std::pair<double,double> >::iterator it = max_means.begin(); it != max_means.end(); it++)
+    {
+
+        converter << it->first ;
+
+        if (counter != max_means.size())
+            converter << ", ";
+
+        counter++;
+    }
+    converter << "); \n";
+
+    gp << converter.str();
+
+    line_command << "plot '-' with linespoints title 'max SNR means'  ls 1 lc 1, ";
+    line_command << "'-' with linespoints title 'mean SNR means' ls 2 lc 2, ";
+    line_command << "'-' with linespoints title 'min SNR means' ls 3 lc 3; \n";
+
+/*     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
+ */
+    gp << line_command.str();
+
+    gp.send1d(max_means);
+    gp.send1d(mean_means);
+    gp.send1d(min_means);
+
+    return;
+}		/* -----  end of function GenerateSNRvsWPatFromFile  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */
