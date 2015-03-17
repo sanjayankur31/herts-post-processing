@@ -193,7 +193,7 @@ main ( int ac, char *av[] )
             converter.str("");
             converter1.clear();
             converter1.str("");
-            converter << "00-SNR-data-w-" << *it << ".txt";
+            converter << "00-SNR-data-k-w-" << *it << ".txt";
             std::cout << converter.str();
             converter1 << "w_pat = " << (*it)*0.3 ;
             inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
@@ -208,7 +208,7 @@ main ( int ac, char *av[] )
         {
             converter.clear();
             converter.str("");
-            converter << "00-SNR-data-w-" << *it << ".txt";
+            converter << "00-SNR-data-k-w-" << *it << ".txt";
             std::cout << converter.str();
             inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
         }
