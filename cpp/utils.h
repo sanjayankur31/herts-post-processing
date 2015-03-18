@@ -28,6 +28,7 @@
 #include <thread>
 #include <boost/program_options.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
+#include <boost/algorithm/string/replace.hpp>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -102,6 +103,7 @@ struct what_to_plot
     bool cumVSover;
     std::vector <double> wPats;
     bool snrVSwPats;
+    bool formatPNG;
 };
 
 struct what_to_plot plot_this;
@@ -695,8 +697,16 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
     unsigned int max_point = 0;
 
     /* Initial set up */
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
-    gp << "set output \"SNR.png\" \n";
+    if (!plot_this.formatPNG)
+    {
+        gp << "set output \"SNR.svg\" \n";
+        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+    }
+    else
+    {
+        gp << "set output \"SNR.png\" \n";
+        gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+    }
     gp << "set title \"SNR vs number of patterns - " << parameters.output_file << "\" \n";
 
 
@@ -733,7 +743,6 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
     gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
     gp << "set ylabel \"SNR\"; \n";
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
     gp << "set xtics 1; \n";
     gp << "set ytics 1; \n";
     gp << "set grid; \n";
@@ -827,8 +836,16 @@ GenerateSNRPlotFromFile (std::string dataFile, std::string addendum = "", unsign
     file_stream.open(dataFile.c_str(), std::ifstream::in);
 
     /* Initial set up */
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
-    gp << "set output \"SNR.png\" \n";
+    if (!plot_this.formatPNG)
+    {
+        gp << "set output \"SNR.svg\" \n";
+        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+    }
+    else
+    {
+        gp << "set output \"SNR.png\" \n";
+        gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+    }
     gp << "set title \"SNR vs number of patterns - " << parameters.output_file << "\" \n";
 
 
@@ -855,7 +872,6 @@ GenerateSNRPlotFromFile (std::string dataFile, std::string addendum = "", unsign
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
     gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
     gp << "set ylabel \"SNR\"; \n";
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
     gp << "set xtics 1; \n";
     gp << "set ytics 1; \n";
     gp << "set grid; \n";
@@ -885,11 +901,18 @@ GenerateMultiSNRPlotFromFile (std::vector<std::pair<std::string, std::string> > 
     unsigned int lc = 0;
 
     /* Initial set up */
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
-    gp << "set output \"SNR-multi.png\" \n";
+    if (!plot_this.formatPNG)
+    {
+        gp << "set output \"SNR-multi.svg\" \n";
+        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+    }
+    else
+    {
+        gp << "set output \"SNR-multi.png\" \n";
+        gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+    }
     gp << "set title \"SNR vs number of patterns - " << parameters.output_file << "\" \n";
     gp << "set ylabel \"SNR\"; \n";
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
     gp << "set xtics 1; \n";
     gp << "set ytics 1; \n";
     gp << "set grid; \n";
@@ -967,14 +990,23 @@ GenerateSNRvsWPatFromFile ( std::vector<std::pair<std::string, double> > inputs 
     std::vector<std::pair<double,double> > min_means;
 
     /* Initial set up */
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf\"; \n";
-    gp << "set output \"SNR-w_pat.png\" \n";
-    gp << "set title \"SNR vs w_pat - " << parameters.output_file << "\" \n";
+    if (!plot_this.formatPNG)
+    {
+        gp << "set output \"SNR-w_pat.svg\" \n";
+        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+        gp << "set title \"SNR vs  w\\\\_pat - " << parameters.output_file << "\" \n";
+        gp << "set xlabel \"w\\\\_pat\"; \n";
+    }
+    else
+    {
+        gp << "set output \"SNR-w_pat.png\" \n";
+        gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+        gp << "set title \"SNR vs w_pat - " << parameters.output_file << "\" \n";
+        gp << "set xlabel \"w_pat\"; \n";
+    }
     gp << "set ylabel \"SNR\"; \n";
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440; \n";
     gp << "set yrange [0:] \n";
     gp << "set grid; \n";
-    gp << "set xlabel \"w_pat\"; \n";
 
     for (std::vector<std::pair<std::string, double> >::iterator it = inputs.begin(); it != inputs.end(); it++)
     {

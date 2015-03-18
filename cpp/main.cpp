@@ -75,6 +75,7 @@ main ( int ac, char *av[] )
             ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative vs overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
             ("generate-snr-vs-wpats-plot-from-file,w","Also generate snr vs wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("snr-for-multiple-pats,W", po::value<std::vector<double> >(&(plot_this.wPats))-> multitoken(), "comma separated list of times for each stage in order")
+            ("png,p", "Generate graphs in png. Default is svg.");
             ;
 
 
@@ -142,6 +143,15 @@ main ( int ac, char *av[] )
             {
                 parameters.print_snr = true;
             }
+            if (vm.count("png"))
+            {
+                plot_this.formatPNG = true;
+            }
+            else
+            {
+                plot_this.formatPNG = false;
+
+            }
         }
 
         std::ifstream ifs(parameters.config_file.c_str());
@@ -195,7 +205,14 @@ main ( int ac, char *av[] )
             converter1.str("");
             converter << "00-SNR-data-k-w-" << *it << ".txt";
             std::cout << converter.str();
-            converter1 << "w_pat = " << (*it)*0.3 ;
+            if(!plot_this.formatPNG)
+            {
+/*                 boost::replace_all(parameters.output_file, "_", "\\\\_");
+ */
+                converter1 << "w\\_pat = " << (*it)*0.3 ;
+            }
+            else
+                converter1 << "w_pat = " << (*it)*0.3 ;
             inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
         }
         GenerateMultiSNRPlotFromFile(inputs);
