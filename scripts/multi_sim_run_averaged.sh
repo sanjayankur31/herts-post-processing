@@ -109,7 +109,7 @@ do
         bc -l < "$master_std_file""-cmd" > "$averaged_std_file"
         bc -l < "$master_std_noise_file""-cmd" > "$averaged_std_noise_file"
 
-        cp "$averaged_snr_file" "$averaged_std_file" "$averaged_mean_file" ../"$averaged_dir" -v
+        cp "$averaged_snr_file" "$averaged_std_file" "$averaged_mean_file" "$averaged_std_noise_file" "$averaged_mean_noise_file" ../"$averaged_dir" -v
         cp "$averaged_snr_file" "00-SNR-data.txt"
         cp "$averaged_mean_file" "00-Mean-data.txt"
         cp "$averaged_mean_noise_file" "00-Mean-noise-data.txt"
