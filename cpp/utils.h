@@ -778,7 +778,7 @@ PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
     std::ofstream std_stream;
     snr_stream.open("00-SNR-data.txt");
     mean_stream.open("00-mean-data.txt");
-    std_stream.open("00-std-data.txt");
+    std_stream.open("00-sd-data.txt");
 
     for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
