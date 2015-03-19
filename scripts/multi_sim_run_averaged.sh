@@ -59,41 +59,62 @@ do
     
     pushd "$combined_dir"
         master_snr_file="00-SNR-data-k-w-""$kval"".txt-all"
-        master_mean_file="00-Means-data-k-w-""$kval"".txt-all"
+        master_mean_file="00-Mean-data-k-w-""$kval"".txt-all"
         master_sd_file="00-SD-data-k-w-""$kval"".txt-all"
+        master_mean_noise_file="00-Mean-noise-data-k-w-""$kval"".txt-all"
+        master_sd_noise_file="00-SD-noise-data-k-w-""$kval"".txt-all"
+
         averaged_snr_file="00-SNR-data-k-w-""$kval"".txt"
-        averaged_mean_file="00-Means-data-k-w-""$kval"".txt"
+        averaged_mean_file="00-Mean-data-k-w-""$kval"".txt"
         averaged_sd_file="00-SD-data-k-w-""$kval"".txt"
+        averaged_mean_noise_file="00-Mean-noise-data-k-w-""$kval"".txt"
+        averaged_sd_noise_file="00-SD-noise-data-k-w-""$kval"".txt"
 
         touch "$master_snr_file"
         touch "$master_mean_file"
         touch "$master_sd_file"
+        touch "$master_mean_noise_file"
+        touch "$master_sd_noise_file"
 
         for j in $(ls *SNR-data.txt); do
             paste "$master_snr_file" "$j" > "$master_snr_file""-new"
             mv "$master_snr_file""-new" "$master_snr_file"
         done
-        for j in $(ls *Means-data.txt); do
+        for j in $(ls *Mean-data.txt); do
             paste "$master_mean_file" "$j" > "$master_mean_file""-new"
             mv "$master_mean_file""-new" "$master_mean_file"
+        done
+        for j in $(ls *Mean-noise-data.txt); do
+            paste "$master_mean_noise_file" "$j" > "$master_mean_noise_file""-new"
+            mv "$master_mean_noise_file""-new" "$master_mean_noise_file"
         done
         for j in $(ls *SD-data.txt); do
             paste "$master_sd_file" "$j" > "$master_sd_file""-new"
             mv "$master_sd_file""-new" "$master_sd_file"
         done
+        for j in $(ls *SD-noise-data.txt); do
+            paste "$master_sd_noise_file" "$j" > "$master_sd_noise_file""-new"
+            mv "$master_sd_noise_file""-new" "$master_sd_noise_file"
+        done
 
         sed -e "s/^\t/(/" -e "s/\t/\+/g" -e "s/$/)\/$runs/" "$master_snr_file" > "$master_snr_file""-cmd"
         sed -e "s/^\t/(/" -e "s/\t/\+/g" -e "s/$/)\/$runs/" "$master_mean_file" > "$master_mean_file""-cmd"
+        sed -e "s/^\t/(/" -e "s/\t/\+/g" -e "s/$/)\/$runs/" "$master_mean_noise_file" > "$master_mean_noise_file""-cmd"
         sed -e "s/^\t/(/" -e "s/\t/\+/g" -e "s/$/)\/$runs/" "$master_sd_file" > "$master_sd_file""-cmd"
+        sed -e "s/^\t/(/" -e "s/\t/\+/g" -e "s/$/)\/$runs/" "$master_sd_noise_file" > "$master_sd_noise_file""-cmd"
 
         bc -l < "$master_snr_file""-cmd" > "$averaged_snr_file"
         bc -l < "$master_mean_file""-cmd" > "$averaged_mean_file"
+        bc -l < "$master_mean_noise_file""-cmd" > "$averaged_mean_noise_file"
         bc -l < "$master_sd_file""-cmd" > "$averaged_sd_file"
+        bc -l < "$master_sd_noise_file""-cmd" > "$averaged_sd_noise_file"
 
         cp "$averaged_snr_file" "$averaged_sd_file" "$averaged_mean_file" ../"$averaged_dir" -v
         cp "$averaged_snr_file" "00-SNR-data.txt"
-        cp "$averaged_mean_file" "00-Means-data.txt"
+        cp "$averaged_mean_file" "00-Mean-data.txt"
+        cp "$averaged_mean_noise_file" "00-Mean-noise-data.txt"
         cp "$averaged_sd_file" "00-SD-data.txt"
+        cp "$averaged_sd_noise_file" "00-SD-noise-data.txt"
         ~/bin/research-bin/postprocess -o '5\\_wPats-averaged' -g
     popd
 done
