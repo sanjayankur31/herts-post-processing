@@ -891,7 +891,7 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
     gp << plot_command.str();
 
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
-    gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
+    gp << "set yrange[:" << max_point << "]; \n";
     gp << "set ylabel \"" << metric << "\"; \n";
     gp << "set xtics 1; \n";
     if (metric.compare("SNR") == 0)
@@ -1042,7 +1042,7 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
 
 
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
-    gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
+    gp << "set yrange[:" << max_point << "]; \n";
     gp << plot_command.str();
     gp << line_command.str();
     gp << " ;\n";
@@ -1143,7 +1143,6 @@ GenerateMetric_VS_WPatFromFile(std::vector<std::pair<std::string, double> > inpu
         gp << "set xlabel \"w_pat\"; \n";
     }
     gp << "set ylabel \"" << title << "\"; \n";
-    gp << "set yrange [0:] \n";
     gp << "set grid; \n";
 
     for (std::vector<std::pair<std::string, double> >::iterator it = inputs.begin(); it != inputs.end(); it++)
