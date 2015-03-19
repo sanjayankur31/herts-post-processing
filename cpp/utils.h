@@ -894,7 +894,10 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
     gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
     gp << "set ylabel \"" << metric << "\"; \n";
     gp << "set xtics 1; \n";
-    gp << "set ytics 1; \n";
+    if (metric.compare("SNR") == 0)
+        gp << "set ytics 1; \n";
+    else
+        gp << "set ytics autofreq; \n";
     gp << "set grid; \n";
     gp << "set xlabel \"Number of patterns stored\"; \n";
     gp << "plot '-' with lines title 'mean " << metric << " - " << addendum.c_str() << "' lc " << lc << "; \n";
@@ -990,7 +993,10 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
     gp << "set title \"" << title << " _VS_ number of patterns - " << parameters.output_file << "\" \n";
     gp << "set ylabel \"" << title << "\"; \n";
     gp << "set xtics 1; \n";
-    gp << "set ytics 1; \n";
+    if (title.compare("SNR") == 0)
+        gp << "set ytics 1; \n";
+    else
+        gp << "set ytics autofreq; \n";
     gp << "set grid; \n";
     gp << "set xlabel \"Number of patterns stored\"; \n";
     line_command << "plot ";
