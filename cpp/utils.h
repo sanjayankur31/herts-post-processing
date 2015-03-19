@@ -51,12 +51,15 @@ struct spikeEvent_type
     unsigned int neuronID;
 };
 
-struct SNR
+struct SNR_data
 {
+    SNR_data(): SNR(0), mean(0), std(0), noise_mean(0), noise_std(0) {}
 
     double SNR;
     double mean;
     double std;
+    double noise_mean;
+    double noise_std;
 };
 
 struct param
@@ -520,10 +523,10 @@ PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, dou
  *  Description:  Get the SNR of one pattern
  * =====================================================================================
  */
-    struct SNR
+    struct SNR_data
 GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseRates )
 {
-    struct SNR snr;
+    struct SNR_data snr;
     unsigned int sum_patterns = std::accumulate(patternRates.begin(), patternRates.end(),0.0);
     snr.mean = sum_patterns/patternRates.size();
 
@@ -535,16 +538,16 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
     snr.std = sqrt(sq_diff/(patternRates.size() -1));
 
     unsigned int sum_noises = std::accumulate(noiseRates.begin(), noiseRates.end(),0.0);
-    double mean_noises = sum_noises/noiseRates.size();
+    snr.noise_mean = sum_noises/noiseRates.size();
 
     sq_diff = 0.;
     std::for_each(noiseRates.begin(), noiseRates.end(), [&] (const double d) {
-            sq_diff += pow((d - mean_noises),2);
+            sq_diff += pow((d - snr.noise_mean),2);
             });
 
-    double std_noises = sqrt(sq_diff/(noiseRates.size() -1));
+    snr.noise_std  = sqrt(sq_diff/(noiseRates.size() -1));
 
-    snr.SNR = ((2.*pow((snr.mean - mean_noises),2))/(pow(snr.std,2) + pow(std_noises,2)));
+    snr.SNR = ((2.*pow((snr.mean - snr.noise_mean),2))/(pow(snr.std,2) + pow(snr.noise_std,2)));
 
     return snr;
 }		/* -----  end of function GetSNR  ----- */
@@ -558,7 +561,7 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
  * =====================================================================================
  */
     void
-MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time, unsigned int patternRecalled, std::multimap <double, struct SNR> &snr_data)
+MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time, unsigned int patternRecalled, std::multimap <double, struct SNR_data> &snr_data)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
@@ -568,7 +571,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     std::vector <unsigned int>neuronsE_rate;
     std::vector <unsigned int>neuronsI_rate;
     std::ostringstream converter;
-    struct SNR snr_at_chunk_time;
+    struct SNR_data snr_at_chunk_time;
 
     std::cout << "Chunk time received: " << chunk_time << "\n";
 
@@ -681,7 +684,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     snr_at_chunk_time = GetSNR(pattern_neurons_rate, noise_neurons_rate);
     std::cout << "SNR at time " << chunk_time << " is " << snr_at_chunk_time.SNR << "\n";
     std::lock_guard<std::mutex> guard(snr_data_mutex);
-    snr_data.insert(std::pair<double, struct SNR>(chunk_time, snr_at_chunk_time));
+    snr_data.insert(std::pair<double, struct SNR_data>(chunk_time, snr_at_chunk_time));
     std::cout << "SNR complete size " << " is " << snr_data.size() << "\n";
 
 
@@ -696,7 +699,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
  * =====================================================================================
  */
     void
-PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
+PlotSNRGraphs (std::multimap <double, struct SNR_data> snr_data)
 {
     std::ostringstream plot_command;
     Gnuplot gp;
@@ -719,7 +722,7 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
 
 #if  0     /* ----- #if 0 : If0Label_2 ----- */
     std::cout << "All snrs: " << "\n";
-    for (std::multimap <double, struct SNR>::iterator it = snr_data.begin(); it != snr_data.end(); it++)
+    for (std::multimap <double, struct SNR_data>::iterator it = snr_data.begin(); it != snr_data.end(); it++)
     {
         std::cout << it->first << ":\t" << it->second.SNR << "\n";
     }
@@ -732,7 +735,7 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
         double mean = 0;
         for(unsigned int j = 0; j <= i; j++)
         {
-            std::multimap <double, struct SNR>::iterator it = snr_data.begin();
+            std::multimap <double, struct SNR_data>::iterator it = snr_data.begin();
             std::advance(it, time_counter);
             time_counter++;
             mean += ((it->second).SNR);
@@ -769,7 +772,7 @@ PlotSNRGraphs (std::multimap <double, struct SNR> snr_data)
  * =====================================================================================
  */
     void
-PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
+PrintSNRDataToFile (std::multimap <double, struct SNR_data> snr_data)
 {
     std::cout << "Printing SNR data to file." << "\n";
     unsigned int time_counter = 0;
@@ -782,13 +785,13 @@ PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
 
     for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
-        struct SNR means;
+        struct SNR_data means;
         means.SNR = 0;
         means.std = 0;
         means.mean = 0;
         for(unsigned int j = 0; j <= i; j++)
         {
-            std::multimap <double, struct SNR>::iterator it = snr_data.begin();
+            std::multimap <double, struct SNR_data>::iterator it = snr_data.begin();
             std::advance(it, time_counter);
             time_counter++;
 

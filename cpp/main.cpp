@@ -44,7 +44,7 @@ main ( int ac, char *av[] )
     std::vector<std::vector<unsigned int> > patterns;
     std::vector<std::vector<unsigned int> > recalls;
     std::vector<double> graphing_times;
-    std::multimap <double, struct SNR> snr_data;
+    std::multimap <double, struct SNR_data> snr_data;
     unsigned int threads_max = 0;
     unsigned int task_counter = 0;
     std::vector<std::thread> threadlist;
