@@ -72,10 +72,10 @@ main ( int ac, char *av[] )
             ("snr,s","Plot SNR plots after processing ras files?")
             ("print-snr,S","Print SNR data after processing ras files?")
             ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
-            ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative vs overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
-            ("generate-snr-vs-wpats-plot-from-file,w","Also generate snr vs wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
-            ("generate-means-vs-wpats-plot-from-file,m","Also generate mean vs wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
-            ("generate-sd-vs-wpats-plot-from-file,d","Also generate sd vs wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
+            ("generate-cum-_VS_-over-snr-plot-from-file,t","Generate cumulative _VS_ overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
+            ("generate-snr-_VS_-wpats-plot-from-file,w","Also generate snr _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
+            ("generate-means-_VS_-wpats-plot-from-file,m","Also generate mean _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
+            ("generate-sd-_VS_-wpats-plot-from-file,d","Also generate sd _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("pats,W", po::value<std::vector<double> >(&(plot_this.wPats))-> multitoken(), "w_pat values that input files are available for")
             ("multiSNR,r","Multi SNR graph requires -W values to be given")
             ("multiMeans,n","Multi Means graph requires -W values to be given")
@@ -135,27 +135,27 @@ main ( int ac, char *av[] )
             if (vm.count("generate-snr-plot-from-file"))
             {
                 plot_this.processRas = false;
-                plot_this.SNR_from_file = true;
+                plot_this.Metrics_from_file = true;
             }
-            if (vm.count("generate-cum-vs-over-snr-plot-from-file"))
+            if (vm.count("generate-cum-_VS_-over-snr-plot-from-file"))
             {
-                plot_this.cumVSover = true;
+                plot_this.cum_VS_over = true;
                 plot_this.processRas = false;
             }
-            if (vm.count("generate-snr-vs-wpats-plot-from-file"))
+            if (vm.count("generate-snr-_VS_-wpats-plot-from-file"))
             {
                 plot_this.processRas = false;
-                plot_this.snrVSwPats = true;
+                plot_this.snr_VS_wPats = true;
             }
-            if (vm.count("generate-means-vs-wpats-plot-from-file"))
+            if (vm.count("generate-means-_VS_-wpats-plot-from-file"))
             {
                 plot_this.processRas = false;
-                plot_this.meanVSwPats = true;
+                plot_this.mean_VS_wPats = true;
             }
-            if (vm.count("generate-sd-vs-wpats-plot-from-file"))
+            if (vm.count("generate-sd-_VS_-wpats-plot-from-file"))
             {
                 plot_this.processRas = false;
-                plot_this.sdVSwPats = true;
+                plot_this.sd_VS_wPats = true;
             }
             if (vm.count("print-snr"))
             {
@@ -209,14 +209,16 @@ main ( int ac, char *av[] )
     /*-----------------------------------------------------------------------------
      *  MAIN LOGIC BEGINS HERE
      *-----------------------------------------------------------------------------*/
-    if(plot_this.SNR_from_file)
+    if(plot_this.Metrics_from_file)
     {
         /*  No post processing, we have a file, we'll plot from it */
         GenerateSNRPlotFromFile("00-SNR-data.txt");
         GenerateMeanPlotFromFile("00-Means-data.txt");
         GenerateSDPlotFromFile("00-SD-data.txt");
+        GenerateNoiseMeanPlotFromFile("00-noise-Means-data.txt");
+        GenerateNoiseSDPlotFromFile("00-noise-SD-data.txt");
     }
-    if(plot_this.cumVSover)
+    if(plot_this.cum_VS_over)
     {
         std::vector<std::pair<std::string, std::string> > inputs;
         inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-cumulative.txt", "cumulative"));
@@ -292,7 +294,7 @@ main ( int ac, char *av[] )
         }
         GenerateMultiSNRPlotFromFile(inputs);
     }
-    if(plot_this.wPats.size() != 0 && plot_this.sdVSwPats)
+    if(plot_this.wPats.size() != 0 && plot_this.sd_VS_wPats)
     {
         std::vector<std::pair<std::string, double> > inputs;
         std::ostringstream converter;
@@ -304,9 +306,19 @@ main ( int ac, char *av[] )
             std::cout << converter.str();
             inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
         }
-        GenerateSDvsWPatFromFile(inputs);
+        GenerateSD_VS_WPatFromFile(inputs);
+
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-noise-SD-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateNoiseSD_VS_WPatFromFile(inputs);
     }
-    if(plot_this.wPats.size() != 0 && plot_this.meanVSwPats)
+    if(plot_this.wPats.size() != 0 && plot_this.mean_VS_wPats)
     {
         std::vector<std::pair<std::string, double> > inputs;
         std::ostringstream converter;
@@ -318,9 +330,18 @@ main ( int ac, char *av[] )
             std::cout << converter.str();
             inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
         }
-        GenerateMeansvsWPatFromFile(inputs);
+        GenerateMeans_VS_WPatFromFile(inputs);
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-noise-Means-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateNoiseMeans_VS_WPatFromFile(inputs);
     }
-    if(plot_this.wPats.size() != 0 && plot_this.snrVSwPats)
+    if(plot_this.wPats.size() != 0 && plot_this.snr_VS_wPats)
     {
         std::vector<std::pair<std::string, double> > inputs;
         std::ostringstream converter;
@@ -332,7 +353,7 @@ main ( int ac, char *av[] )
             std::cout << converter.str();
             inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
         }
-        GenerateSNRvsWPatFromFile(inputs);
+        GenerateSNR_VS_WPatFromFile(inputs);
     }
     if(plot_this.processRas)
     {

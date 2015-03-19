@@ -99,19 +99,19 @@ struct param parameters;
 
 struct what_to_plot
 {
-    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), SNR_from_file (false), cumVSover(false), multiSNR(false), multiMeans(false), multiSD(false), snrVSwPats(false), meanVSwPats(false), sdVSwPats(false), formatPNG(false), processRas(false) {}
+    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), Metrics_from_file (false), cum_VS_over(false), multiSNR(false), multiMeans(false), multiSD(false), snr_VS_wPats(false), mean_VS_wPats(false), sd_VS_wPats(false), formatPNG(false), processRas(false) {}
     bool master;
     bool pattern_graphs;
     bool snr_graphs;
-    bool SNR_from_file;
-    bool cumVSover;
+    bool Metrics_from_file;
+    bool cum_VS_over;
     std::vector <double> wPats;
     bool multiSNR;
     bool multiMeans;
     bool multiSD;
-    bool snrVSwPats;
-    bool meanVSwPats;
-    bool sdVSwPats;
+    bool snr_VS_wPats;
+    bool mean_VS_wPats;
+    bool sd_VS_wPats;
     bool formatPNG;
     bool processRas;
 };
@@ -717,7 +717,7 @@ PlotSNRGraphs (std::multimap <double, struct SNR_data> snr_data)
         gp << "set output \"SNR.png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
     }
-    gp << "set title \"SNR vs number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set title \"SNR _VS_ number of patterns - " << parameters.output_file << "\" \n";
 
 
 #if  0     /* ----- #if 0 : If0Label_2 ----- */
@@ -779,16 +779,17 @@ PrintSNRDataToFile (std::multimap <double, struct SNR_data> snr_data)
     std::ofstream snr_stream;
     std::ofstream mean_stream;
     std::ofstream std_stream;
+    std::ofstream noise_mean_stream;
+    std::ofstream noise_std_stream;
     snr_stream.open("00-SNR-data.txt");
     mean_stream.open("00-Means-data.txt");
     std_stream.open("00-SD-data.txt");
+    noise_mean_stream.open("00-noise-Means-data.txt");
+    noise_std_stream.open("00-noise-SD-data.txt");
 
     for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
         struct SNR_data means;
-        means.SNR = 0;
-        means.std = 0;
-        means.mean = 0;
         for(unsigned int j = 0; j <= i; j++)
         {
             std::multimap <double, struct SNR_data>::iterator it = snr_data.begin();
@@ -798,22 +799,32 @@ PrintSNRDataToFile (std::multimap <double, struct SNR_data> snr_data)
             means.SNR += ((it->second).SNR);
             means.mean += ((it->second).mean);
             means.std += ((it->second).std);
+            means.noise_mean += ((it->second).noise_mean);
+            means.noise_std += ((it->second).noise_std);
 
             snr_stream << (it->second).SNR << "\n";
             mean_stream << (it->second).mean << "\n";
             std_stream << (it->second).std << "\n";
+            noise_mean_stream << (it->second).noise_mean << "\n";
+            noise_std_stream << (it->second).noise_std << "\n";
         }
         means.SNR /= (i+1);
         means.mean /= (i+1);
         means.std /= (i+1);
+        means.noise_mean /= (i+1);
+        means.noise_std /= (i+1);
         snr_stream << means.SNR << "\n";
         mean_stream << means.mean << "\n";
         std_stream << means.std << "\n";
+        noise_mean_stream << means.noise_mean << "\n";
+        noise_std_stream << means.noise_std << "\n";
     }
 
     snr_stream.close();
     mean_stream.close();
     std_stream.close();
+    noise_mean_stream.close();
+    noise_std_stream.close();
     return ;
 }		/* -----  end of function PrintSNRDataToFile  ----- */
 
@@ -856,7 +867,7 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
         gp << "set output \"" << metric << ".png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
     }
-    gp << "set title \"" << metric << " vs number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set title \"" << metric << " _VS_ number of patterns - " << parameters.output_file << "\" \n";
 
 
     for (unsigned int i = 0; i < parameters.num_pats; i++)
@@ -918,6 +929,17 @@ GenerateMeanPlotFromFile (std::string dataFile, std::string addendum = "", unsig
 
 /* 
  * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateNoiseMeanPlotFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateNoiseMeanPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+{
+    GenerateMetricPlotFromFile(dataFile, "NoiseMean", addendum, lc);
+}
+/* 
+ * ===  FUNCTION  ======================================================================
  *         Name:  GenerateSDPlotFromFile
  *  Description:  
  * =====================================================================================
@@ -926,6 +948,17 @@ GenerateMeanPlotFromFile (std::string dataFile, std::string addendum = "", unsig
 GenerateSDPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
 {
     GenerateMetricPlotFromFile(dataFile, "SD", addendum, lc);
+}
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateNoiseSDPlotFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateNoiseSDPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+{
+    GenerateMetricPlotFromFile(dataFile, "NoiseSD", addendum, lc);
 }
 /* 
  * ===  FUNCTION  ======================================================================
@@ -954,7 +987,7 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
         gp << "set output \"" << title << "-multi.png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
     }
-    gp << "set title \"" << title << " vs number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set title \"" << title << " _VS_ number of patterns - " << parameters.output_file << "\" \n";
     gp << "set ylabel \"" << title << "\"; \n";
     gp << "set xtics 1; \n";
     gp << "set ytics 1; \n";
@@ -1039,6 +1072,17 @@ GenerateMultiMeansPlotFromFile (std::vector<std::pair<std::string, std::string> 
 }
 /* 
  * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateMultiNoiseMeanPlotFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateMultiNoiseMeansPlotFromFile (std::vector<std::pair<std::string, std::string> > inputs)
+{
+    GenerateMultiMetricPlotFromFile(inputs, "NoiseMean");
+}
+/* 
+ * ===  FUNCTION  ======================================================================
  *         Name:  GenerateMultiSDPlotFromFile
  *  Description:  
  * =====================================================================================
@@ -1051,12 +1095,23 @@ GenerateMultiSDPlotFromFile (std::vector<std::pair<std::string, std::string> > i
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateMetricVsWPatFromFile
+ *         Name:  GenerateMultiNoiseSDPlotFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateMetricVsWPatFromFile(std::vector<std::pair<std::string, double> > inputs, std::string title)
+GenerateMultiNoiseSDPlotFromFile (std::vector<std::pair<std::string, std::string> > inputs)
+{
+    GenerateMultiMetricPlotFromFile(inputs, "NoiseSD");
+}
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateMetric_VS_WPatFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateMetric_VS_WPatFromFile(std::vector<std::pair<std::string, double> > inputs, std::string title)
 {
     Gnuplot gp;
     std::ostringstream line_command;
@@ -1071,14 +1126,14 @@ GenerateMetricVsWPatFromFile(std::vector<std::pair<std::string, double> > inputs
     {
         gp << "set output \"" << title << "-w_pat.svg\" \n";
         gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
-        gp << "set title \"" << title << " vs  w\\\\_pat - " << parameters.output_file << "\" \n";
+        gp << "set title \"" << title << " _VS_  w\\\\_pat - " << parameters.output_file << "\" \n";
         gp << "set xlabel \"w\\\\_pat\"; \n";
     }
     else
     {
         gp << "set output \"" << title << "-w_pat.png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
-        gp << "set title \"" << title << " vs w_pat - " << parameters.output_file << "\" \n";
+        gp << "set title \"" << title << " _VS_ w_pat - " << parameters.output_file << "\" \n";
         gp << "set xlabel \"w_pat\"; \n";
     }
     gp << "set ylabel \"" << title << "\"; \n";
@@ -1158,41 +1213,64 @@ GenerateMetricVsWPatFromFile(std::vector<std::pair<std::string, double> > inputs
     gp.send1d(min_means);
 
     return;
-}		/* -----  end of function GenerateMetricVsWPatFromFile  ----- */
+}		/* -----  end of function GenerateMetric_VS_WPatFromFile  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateSNRvsWPatFromFile
+ *         Name:  GenerateSNR_VS_WPatFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateSNRvsWPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
+GenerateSNR_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
 {
-    GenerateMetricVsWPatFromFile(inputs, "SNR");
-}		/* -----  end of function GenerateSNRvsWPatFromFile  ----- */
+    GenerateMetric_VS_WPatFromFile(inputs, "SNR");
+}		/* -----  end of function GenerateSNR_VS_WPatFromFile  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateMeanvsWPatFromFile
+ *         Name:  GenerateMean_VS_WPatFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateMeansvsWPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
+GenerateMeans_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
 {
-    GenerateMetricVsWPatFromFile(inputs, "Mean");
-}		/* -----  end of function GenerateMeanvsWPatFromFile  ----- */
+    GenerateMetric_VS_WPatFromFile(inputs, "Mean");
+}		/* -----  end of function GenerateMean_VS_WPatFromFile  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateSDvsWPatFromFile
+ *         Name:  GenerateMean_VS_WPatFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateSDvsWPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
+GenerateNoiseMeans_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
 {
-    GenerateMetricVsWPatFromFile(inputs, "SD");
-}		/* -----  end of function GenerateSDvsWPatFromFile  ----- */
+    GenerateMetric_VS_WPatFromFile(inputs, "Mean");
+}		/* -----  end of function GenerateMean_VS_WPatFromFile  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateSD_VS_WPatFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateSD_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
+{
+    GenerateMetric_VS_WPatFromFile(inputs, "SD");
+}		/* -----  end of function GenerateSD_VS_WPatFromFile  ----- */
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateNoiseSD_VS_WPatFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateNoiseSD_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
+{
+    GenerateMetric_VS_WPatFromFile(inputs, "NoiseSD");
+}		/* -----  end of function GenerateNoiseSD_VS_WPatFromFile  ----- */
 
 #endif   /* ----- #ifndef utils_INC  ----- */
