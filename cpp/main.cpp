@@ -159,7 +159,7 @@ main ( int ac, char *av[] )
             }
             if (vm.count("print-snr"))
             {
-                plot_this.processRas = false;
+                plot_this.processRas = true;
                 parameters.print_snr = true;
             }
             if (vm.count("png"))
