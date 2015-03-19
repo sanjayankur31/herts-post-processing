@@ -308,6 +308,7 @@ main ( int ac, char *av[] )
         }
         GenerateSTD_VS_WPatFromFile(inputs);
 
+        inputs.clear();
         for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
         {
             converter.clear();
@@ -330,7 +331,10 @@ main ( int ac, char *av[] )
             std::cout << converter.str();
             inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
         }
+
         GenerateMean_VS_WPatFromFile(inputs);
+
+        inputs.clear();
         for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
         {
             converter.clear();
