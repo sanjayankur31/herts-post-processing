@@ -73,11 +73,11 @@ do
             paste "$master_snr_file" "$j" > "$master_snr_file""-new"
             mv "$master_snr_file""-new" "$master_snr_file"
         done
-        for j in $(ls *Mean-data.txt); do
+        for j in $(ls *Means-data.txt); do
             paste "$master_mean_file" "$j" > "$master_mean_file""-new"
             mv "$master_mean_file""-new" "$master_mean_file"
         done
-        for j in $(ls *sd-data.txt); do
+        for j in $(ls *SD-data.txt); do
             paste "$master_sd_file" "$j" > "$master_sd_file""-new"
             mv "$master_sd_file""-new" "$master_sd_file"
         done
