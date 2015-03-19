@@ -53,13 +53,13 @@ struct spikeEvent_type
 
 struct SNR_data
 {
-    SNR_data(): SNR(0), mean(0), std(0), noise_mean(0), noise_std(0) {}
+    SNR_data(): SNR(0), mean(0), std(0), mean_noise(0), std_noise(0) {}
 
     double SNR;
     double mean;
     double std;
-    double noise_mean;
-    double noise_std;
+    double mean_noise;
+    double std_noise;
 };
 
 struct param
@@ -99,7 +99,7 @@ struct param parameters;
 
 struct what_to_plot
 {
-    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), Metrics_from_file (false), cum_VS_over(false), multiSNR(false), multiMean(false), multiSD(false), snr_VS_wPats(false), mean_VS_wPats(false), sd_VS_wPats(false), formatPNG(false), processRas(false) {}
+    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), Metrics_from_file (false), cum_VS_over(false), multiSNR(false), multiMean(false), multiSTD(false), snr_VS_wPats(false), mean_VS_wPats(false), std_VS_wPats(false), formatPNG(false), processRas(false) {}
     bool master;
     bool pattern_graphs;
     bool snr_graphs;
@@ -108,10 +108,10 @@ struct what_to_plot
     std::vector <double> wPats;
     bool multiSNR;
     bool multiMean;
-    bool multiSD;
+    bool multiSTD;
     bool snr_VS_wPats;
     bool mean_VS_wPats;
-    bool sd_VS_wPats;
+    bool std_VS_wPats;
     bool formatPNG;
     bool processRas;
 };
@@ -538,16 +538,16 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
     snr.std = sqrt(sq_diff/(patternRates.size() -1));
 
     unsigned int sum_noises = std::accumulate(noiseRates.begin(), noiseRates.end(),0.0);
-    snr.noise_mean = sum_noises/noiseRates.size();
+    snr.mean_noise = sum_noises/noiseRates.size();
 
     sq_diff = 0.;
     std::for_each(noiseRates.begin(), noiseRates.end(), [&] (const double d) {
-            sq_diff += pow((d - snr.noise_mean),2);
+            sq_diff += pow((d - snr.mean_noise),2);
             });
 
-    snr.noise_std  = sqrt(sq_diff/(noiseRates.size() -1));
+    snr.std_noise  = sqrt(sq_diff/(noiseRates.size() -1));
 
-    snr.SNR = ((2.*pow((snr.mean - snr.noise_mean),2))/(pow(snr.std,2) + pow(snr.noise_std,2)));
+    snr.SNR = ((2.*pow((snr.mean - snr.mean_noise),2))/(pow(snr.std,2) + pow(snr.std_noise,2)));
 
     return snr;
 }		/* -----  end of function GetSNR  ----- */
@@ -779,13 +779,13 @@ PrintSNRDataToFile (std::multimap <double, struct SNR_data> snr_data)
     std::ofstream snr_stream;
     std::ofstream mean_stream;
     std::ofstream std_stream;
-    std::ofstream noise_mean_stream;
-    std::ofstream noise_std_stream;
+    std::ofstream mean_noise_stream;
+    std::ofstream std_noise_stream;
     snr_stream.open("00-SNR-data.txt");
     mean_stream.open("00-Mean-data.txt");
-    std_stream.open("00-SD-data.txt");
-    noise_mean_stream.open("00-Mean-noise-data.txt");
-    noise_std_stream.open("00-SD-noise-data.txt");
+    std_stream.open("00-STD-data.txt");
+    mean_noise_stream.open("00-Mean-noise-data.txt");
+    std_noise_stream.open("00-STD-noise-data.txt");
 
     for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
@@ -799,32 +799,32 @@ PrintSNRDataToFile (std::multimap <double, struct SNR_data> snr_data)
             means.SNR += ((it->second).SNR);
             means.mean += ((it->second).mean);
             means.std += ((it->second).std);
-            means.noise_mean += ((it->second).noise_mean);
-            means.noise_std += ((it->second).noise_std);
+            means.mean_noise += ((it->second).mean_noise);
+            means.std_noise += ((it->second).std_noise);
 
             snr_stream << (it->second).SNR << "\n";
             mean_stream << (it->second).mean << "\n";
             std_stream << (it->second).std << "\n";
-            noise_mean_stream << (it->second).noise_mean << "\n";
-            noise_std_stream << (it->second).noise_std << "\n";
+            mean_noise_stream << (it->second).mean_noise << "\n";
+            std_noise_stream << (it->second).std_noise << "\n";
         }
         means.SNR /= (i+1);
         means.mean /= (i+1);
         means.std /= (i+1);
-        means.noise_mean /= (i+1);
-        means.noise_std /= (i+1);
+        means.mean_noise /= (i+1);
+        means.std_noise /= (i+1);
         snr_stream << means.SNR << "\n";
         mean_stream << means.mean << "\n";
         std_stream << means.std << "\n";
-        noise_mean_stream << means.noise_mean << "\n";
-        noise_std_stream << means.noise_std << "\n";
+        mean_noise_stream << means.mean_noise << "\n";
+        std_noise_stream << means.std_noise << "\n";
     }
 
     snr_stream.close();
     mean_stream.close();
     std_stream.close();
-    noise_mean_stream.close();
-    noise_std_stream.close();
+    mean_noise_stream.close();
+    std_noise_stream.close();
     return ;
 }		/* -----  end of function PrintSNRDataToFile  ----- */
 
@@ -940,25 +940,25 @@ GenerateMeanNoisePlotFromFile (std::string dataFile, std::string addendum = "", 
 }
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateSDPlotFromFile
+ *         Name:  GenerateSTDPlotFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateSDPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+GenerateSTDPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
 {
-    GenerateMetricPlotFromFile(dataFile, "SD", addendum, lc);
+    GenerateMetricPlotFromFile(dataFile, "STD", addendum, lc);
 }
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateSDNoisePlotFromFile
+ *         Name:  GenerateSTDNoisePlotFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateSDNoisePlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+GenerateSTDNoisePlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
 {
-    GenerateMetricPlotFromFile(dataFile, "SDNoise", addendum, lc);
+    GenerateMetricPlotFromFile(dataFile, "STDNoise", addendum, lc);
 }
 /* 
  * ===  FUNCTION  ======================================================================
@@ -1083,26 +1083,26 @@ GenerateMultiMeanNoisePlotFromFile (std::vector<std::pair<std::string, std::stri
 }
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateMultiSDPlotFromFile
+ *         Name:  GenerateMultiSTDPlotFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateMultiSDPlotFromFile (std::vector<std::pair<std::string, std::string> > inputs)
+GenerateMultiSTDPlotFromFile (std::vector<std::pair<std::string, std::string> > inputs)
 {
-    GenerateMultiMetricPlotFromFile(inputs, "SD");
+    GenerateMultiMetricPlotFromFile(inputs, "STD");
 }
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateMultiSDNoisePlotFromFile
+ *         Name:  GenerateMultiSTDNoisePlotFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateMultiSDNoisePlotFromFile (std::vector<std::pair<std::string, std::string> > inputs)
+GenerateMultiSTDNoisePlotFromFile (std::vector<std::pair<std::string, std::string> > inputs)
 {
-    GenerateMultiMetricPlotFromFile(inputs, "SDNoise");
+    GenerateMultiMetricPlotFromFile(inputs, "STDNoise");
 }
 /* 
  * ===  FUNCTION  ======================================================================
@@ -1252,25 +1252,25 @@ GenerateMeanNoise_VS_WPatFromFile ( std::vector<std::pair<std::string, double> >
 
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateSD_VS_WPatFromFile
+ *         Name:  GenerateSTD_VS_WPatFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateSD_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
+GenerateSTD_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
 {
-    GenerateMetric_VS_WPatFromFile(inputs, "SD");
-}		/* -----  end of function GenerateSD_VS_WPatFromFile  ----- */
+    GenerateMetric_VS_WPatFromFile(inputs, "STD");
+}		/* -----  end of function GenerateSTD_VS_WPatFromFile  ----- */
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateSDNoise_VS_WPatFromFile
+ *         Name:  GenerateSTDNoise_VS_WPatFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateSDNoise_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
+GenerateSTDNoise_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > inputs )
 {
-    GenerateMetric_VS_WPatFromFile(inputs, "SDNoise");
-}		/* -----  end of function GenerateSDNoise_VS_WPatFromFile  ----- */
+    GenerateMetric_VS_WPatFromFile(inputs, "STDNoise");
+}		/* -----  end of function GenerateSTDNoise_VS_WPatFromFile  ----- */
 
 #endif   /* ----- #ifndef utils_INC  ----- */
