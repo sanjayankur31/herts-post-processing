@@ -213,6 +213,8 @@ main ( int ac, char *av[] )
     {
         /*  No post processing, we have a file, we'll plot from it */
         GenerateSNRPlotFromFile("00-SNR-data.txt");
+        GenerateMeanPlotFromFile("00-Means-data.txt");
+        GenerateSDPlotFromFile("00-SD-data.txt");
     }
     if(plot_this.cumVSover)
     {

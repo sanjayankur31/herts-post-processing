@@ -814,16 +814,16 @@ PrintSNRDataToFile (std::multimap <double, struct SNR> snr_data)
     return ;
 }		/* -----  end of function PrintSNRDataToFile  ----- */
 
-
 /* 
  * ===  FUNCTION  ======================================================================
- *         Name:  GenerateSNRPlotFromFile
+ *         Name:  GenerateMetricPlotFromFile
  *  Description:  
  * =====================================================================================
  */
     void
-GenerateSNRPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string addendum = "", unsigned int lc = 1 )
 {
+
     Gnuplot gp;
     std::ostringstream plot_command;
     std::vector<std::pair<double, double> > points_means;
@@ -845,31 +845,31 @@ GenerateSNRPlotFromFile (std::string dataFile, std::string addendum = "", unsign
     /* Initial set up */
     if (!plot_this.formatPNG)
     {
-        gp << "set output \"SNR.svg\" \n";
+        gp << "set output \"" << metric << ".svg\" \n";
         gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
     }
     else
     {
-        gp << "set output \"SNR.png\" \n";
+        gp << "set output \"" << metric << ".png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
     }
-    gp << "set title \"SNR vs number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set title \"" << metric << " vs number of patterns - " << parameters.output_file << "\" \n";
 
 
     for (unsigned int i = 0; i < parameters.num_pats; i++)
     {
-        double mean_snr = 0.;
+        double mean_value = 0.;
         for(unsigned int j = 0; j <= i; j++)
         {
-            double snr_value = 0.;
-            file_stream >> snr_value;
-            plot_command << "set label \"\" at " << i+1 << "," << snr_value << " point pointtype " << j+1 << " lc " << lc << " ;\n";
-            if (snr_value > max_point)
-                max_point = ceil(snr_value);
+            double value = 0.;
+            file_stream >> value;
+            plot_command << "set label \"\" at " << i+1 << "," << value << " point pointtype " << j+1 << " lc " << lc << " ;\n";
+            if (value > max_point)
+                max_point = ceil(value);
         }
-        file_stream >> mean_snr;
-        std::cout << i+1 << ":\t" << mean_snr << "\n";
-        points_means.emplace_back(std::pair<double, double>(i+1, mean_snr));
+        file_stream >> mean_value;
+        std::cout << i+1 << ":\t" << mean_value << "\n";
+        points_means.emplace_back(std::pair<double, double>(i+1, mean_value));
     }
 
     file_stream.close();
@@ -878,18 +878,52 @@ GenerateSNRPlotFromFile (std::string dataFile, std::string addendum = "", unsign
 
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
     gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
-    gp << "set ylabel \"SNR\"; \n";
+    gp << "set ylabel \"" << metric << "\"; \n";
     gp << "set xtics 1; \n";
     gp << "set ytics 1; \n";
     gp << "set grid; \n";
     gp << "set xlabel \"Number of patterns stored\"; \n";
-    gp << "plot '-' with lines title 'mean SNR - " << addendum.c_str() << "' lc " << lc << "; \n";
+    gp << "plot '-' with lines title 'mean " << metric << " - " << addendum.c_str() << "' lc " << lc << "; \n";
     gp.send1d(points_means);
 
     return;
-}		/* -----  end of function GenerateSNRPlotFromFile  ----- */
+}		/* -----  end of function GenerateMetricPlotFromFile  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateSNRPlotFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateSNRPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+{
+    GenerateMetricPlotFromFile(dataFile, "SNR", addendum, lc);
+}
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateMeanPlotFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateMeanPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+{
+    GenerateMetricPlotFromFile(dataFile, "Mean", addendum, lc);
+}
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateSDPlotFromFile
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateSDPlotFromFile (std::string dataFile, std::string addendum = "", unsigned int lc = 1 )
+{
+    GenerateMetricPlotFromFile(dataFile, "SD", addendum, lc);
+}
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  GenerateMultiMetricPlotFromFile
