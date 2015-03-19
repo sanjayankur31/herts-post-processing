@@ -78,7 +78,7 @@ main ( int ac, char *av[] )
             ("generate-sd-_VS_-wpats-plot-from-file,d","Also generate sd _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("pats,W", po::value<std::vector<double> >(&(plot_this.wPats))-> multitoken(), "w_pat values that input files are available for")
             ("multiSNR,r","Multi SNR graph requires -W values to be given")
-            ("multiMeans,n","Multi Means graph requires -W values to be given")
+            ("multiMean,n","Multi Mean graph requires -W values to be given")
             ("multiSD,D","Multi SD graph requires -W values to be given")
             ("png,p", "Generate graphs in png. Default is svg.");
             ;
@@ -171,10 +171,10 @@ main ( int ac, char *av[] )
                 plot_this.processRas = false;
                 plot_this.multiSNR = true;
             }
-            if (vm.count("multiMeans"))
+            if (vm.count("multiMean"))
             {
                 plot_this.processRas = false;
-                plot_this.multiMeans = true;
+                plot_this.multiMean = true;
             }
             if (vm.count("multiSD"))
             {
@@ -213,10 +213,10 @@ main ( int ac, char *av[] )
     {
         /*  No post processing, we have a file, we'll plot from it */
         GenerateSNRPlotFromFile("00-SNR-data.txt");
-        GenerateMeanPlotFromFile("00-Means-data.txt");
+        GenerateMeanPlotFromFile("00-Mean-data.txt");
         GenerateSDPlotFromFile("00-SD-data.txt");
-        GenerateNoiseMeanPlotFromFile("00-noise-Means-data.txt");
-        GenerateNoiseSDPlotFromFile("00-noise-SD-data.txt");
+        GenerateMeanNoisePlotFromFile("00-Mean-noise-data.txt");
+        GenerateSDNoisePlotFromFile("00-SD-noise-data.txt");
     }
     if(plot_this.cum_VS_over)
     {
@@ -225,7 +225,7 @@ main ( int ac, char *av[] )
         inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-overwritten.txt", "overwritten"));
         GenerateMultiSNRPlotFromFile(inputs);
     }
-    if(plot_this.wPats.size() != 0 && plot_this.multiMeans)
+    if(plot_this.wPats.size() != 0 && plot_this.multiMean)
     {
         std::vector<std::pair<std::string, std::string> > inputs;
         std::ostringstream converter;
@@ -236,7 +236,7 @@ main ( int ac, char *av[] )
             converter.str("");
             converter1.clear();
             converter1.str("");
-            converter << "00-Means-data-k-w-" << *it << ".txt";
+            converter << "00-Mean-data-k-w-" << *it << ".txt";
             std::cout << converter.str();
             if(!plot_this.formatPNG)
             {
@@ -246,7 +246,7 @@ main ( int ac, char *av[] )
                 converter1 << "w_pat = " << (*it)* 3 << "nS" ;
             inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
         }
-        GenerateMultiMeansPlotFromFile(inputs);
+        GenerateMultiMeanPlotFromFile(inputs);
     }
     if(plot_this.wPats.size() != 0 && plot_this.multiSD)
     {
@@ -312,11 +312,11 @@ main ( int ac, char *av[] )
         {
             converter.clear();
             converter.str("");
-            converter << "00-noise-SD-data-k-w-" << *it << ".txt";
+            converter << "00-SD-noise-data-k-w-" << *it << ".txt";
             std::cout << converter.str();
             inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
         }
-        GenerateNoiseSD_VS_WPatFromFile(inputs);
+        GenerateSDNoise_VS_WPatFromFile(inputs);
     }
     if(plot_this.wPats.size() != 0 && plot_this.mean_VS_wPats)
     {
@@ -326,20 +326,20 @@ main ( int ac, char *av[] )
         {
             converter.clear();
             converter.str("");
-            converter << "00-Means-data-k-w-" << *it << ".txt";
+            converter << "00-Mean-data-k-w-" << *it << ".txt";
             std::cout << converter.str();
             inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
         }
-        GenerateMeans_VS_WPatFromFile(inputs);
+        GenerateMean_VS_WPatFromFile(inputs);
         for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
         {
             converter.clear();
             converter.str("");
-            converter << "00-noise-Means-data-k-w-" << *it << ".txt";
+            converter << "00-Mean-noise-data-k-w-" << *it << ".txt";
             std::cout << converter.str();
             inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
         }
-        GenerateNoiseMeans_VS_WPatFromFile(inputs);
+        GenerateMeanNoise_VS_WPatFromFile(inputs);
     }
     if(plot_this.wPats.size() != 0 && plot_this.snr_VS_wPats)
     {
