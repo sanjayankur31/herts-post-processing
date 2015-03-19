@@ -45,8 +45,7 @@ do
         # make sure the configuration file is up to date
         ~/bin/research-scripts/run_vogels_mpich.sh
         pushd "$(tmux show-buffer)"
-            #~/bin/research-bin/postprocess -o "$(tmux show-buffer)" -c "$(tmux show-buffer).cfg" -S -s && rm ./*.ras ./*.netstate ./*.weightinfo ./*.rate ./*.log -f
-            ~/bin/research-bin/postprocess -o "$(tmux show-buffer)" -c "$(tmux show-buffer)"".cfg" -S -s
+            ~/bin/research-bin/postprocess -o "$(tmux show-buffer)" -c "$(tmux show-buffer)"".cfg" -S -s && rm ./*.ras ./*.netstate ./*.weightinfo ./*.rate ./*.log -f
 
             prefix=$(printf "%02d" $(($i*1)))
             rename "00" "$prefix" ./*.txt 
