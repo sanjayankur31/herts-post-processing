@@ -87,8 +87,8 @@ do
         sed -e "s/^\t/(/" -e "s/\t/\+/g" -e "s/$/)\/$runs/" "$master_sd_file" > "$master_sd_file""-cmd"
 
         bc -l < "$master_snr_file""-cmd" > "$averaged_snr_file"
-        bc -l < "$master_snr_file""-cmd" > "$averaged_mean_file"
-        bc -l < "$master_snr_file""-cmd" > "$averaged_sd_file"
+        bc -l < "$master_mean_file""-cmd" > "$averaged_mean_file"
+        bc -l < "$master_sd_file""-cmd" > "$averaged_sd_file"
 
         cp "$averaged_snr_file" "$averaged_sd_file" "$averaged_mean_file" ../"$averaged_dir" -v
         cp "$averaged_snr_file" "00-SNR-data.txt"
