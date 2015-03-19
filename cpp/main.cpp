@@ -67,14 +67,19 @@ main ( int ac, char *av[] )
             ("out,o", po::value<std::string>(&(parameters.output_file)), "output filename")
             ("config,c", po::value<std::string>(&(parameters.config_file))->default_value("simulation_config.cfg"),"configuration file to be used to find parameter values for this simulation run")
             ("all,a","Plot all plots - this may take a while?")
-            ("master,m","Plot master time plot - this may take a while?")
+            ("master,M","Plot master time plot - this may take a while?")
             ("pattern,p","Plot pattern plots?")
-            ("snr,s","Plot SNR plots?")
-            ("print-snr,S","Print SNR data?")
+            ("snr,s","Plot SNR plots after processing ras files?")
+            ("print-snr,S","Print SNR data after processing ras files?")
             ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
             ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative vs overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
             ("generate-snr-vs-wpats-plot-from-file,w","Also generate snr vs wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
-            ("snr-for-multiple-pats,W", po::value<std::vector<double> >(&(plot_this.wPats))-> multitoken(), "comma separated list of times for each stage in order")
+            ("generate-means-vs-wpats-plot-from-file,m","Also generate mean vs wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
+            ("generate-sd-vs-wpats-plot-from-file,d","Also generate sd vs wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
+            ("pats,W", po::value<std::vector<double> >(&(plot_this.wPats))-> multitoken(), "w_pat values that input files are available for")
+            ("multiSNR,r","Multi SNR graph requires -W values to be given")
+            ("multiMeans,n","Multi Means graph requires -W values to be given")
+            ("multiSD,D","Multi SD graph requires -W values to be given")
             ("png,p", "Generate graphs in png. Default is svg.");
             ;
 
@@ -129,28 +134,52 @@ main ( int ac, char *av[] )
             }
             if (vm.count("generate-snr-plot-from-file"))
             {
-                plot_this.from_file = true;
+                plot_this.processRas = false;
+                plot_this.SNR_from_file = true;
             }
             if (vm.count("generate-cum-vs-over-snr-plot-from-file"))
             {
                 plot_this.cumVSover = true;
+                plot_this.processRas = false;
             }
             if (vm.count("generate-snr-vs-wpats-plot-from-file"))
             {
+                plot_this.processRas = false;
                 plot_this.snrVSwPats = true;
+            }
+            if (vm.count("generate-means-vs-wpats-plot-from-file"))
+            {
+                plot_this.processRas = false;
+                plot_this.meanVSwPats = true;
+            }
+            if (vm.count("generate-sd-vs-wpats-plot-from-file"))
+            {
+                plot_this.processRas = false;
+                plot_this.sdVSwPats = true;
             }
             if (vm.count("print-snr"))
             {
+                plot_this.processRas = false;
                 parameters.print_snr = true;
             }
             if (vm.count("png"))
             {
                 plot_this.formatPNG = true;
             }
-            else
+            if (vm.count("multiSNR"))
             {
-                plot_this.formatPNG = false;
-
+                plot_this.processRas = false;
+                plot_this.multiSNR = true;
+            }
+            if (vm.count("multiMeans"))
+            {
+                plot_this.processRas = false;
+                plot_this.multiMeans = true;
+            }
+            if (vm.count("multiSD"))
+            {
+                plot_this.processRas = false;
+                plot_this.multiSD = true;
             }
         }
 
@@ -180,7 +209,7 @@ main ( int ac, char *av[] )
     /*-----------------------------------------------------------------------------
      *  MAIN LOGIC BEGINS HERE
      *-----------------------------------------------------------------------------*/
-    if(plot_this.from_file)
+    if(plot_this.SNR_from_file)
     {
         /*  No post processing, we have a file, we'll plot from it */
         GenerateSNRPlotFromFile("00-SNR-data.txt");
@@ -192,7 +221,53 @@ main ( int ac, char *av[] )
         inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-overwritten.txt", "overwritten"));
         GenerateMultiSNRPlotFromFile(inputs);
     }
-    if(plot_this.wPats.size() != 0)
+    if(plot_this.wPats.size() != 0 && plot_this.multiMeans)
+    {
+        std::vector<std::pair<std::string, std::string> > inputs;
+        std::ostringstream converter;
+        std::ostringstream converter1;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-Means-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            if(!plot_this.formatPNG)
+            {
+                converter1 << "w\\_pat = " << (*it)* 3 << "nS" ;
+            }
+            else
+                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
+        }
+        GenerateMultiMeansPlotFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.multiSD)
+    {
+        std::vector<std::pair<std::string, std::string> > inputs;
+        std::ostringstream converter;
+        std::ostringstream converter1;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-SD-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            if(!plot_this.formatPNG)
+            {
+                converter1 << "w\\_pat = " << (*it)* 3  << "nS";
+            }
+            else
+                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
+        }
+        GenerateMultiSDPlotFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.multiSNR)
     {
         std::vector<std::pair<std::string, std::string> > inputs;
         std::ostringstream converter;
@@ -207,15 +282,41 @@ main ( int ac, char *av[] )
             std::cout << converter.str();
             if(!plot_this.formatPNG)
             {
-/*                 boost::replace_all(parameters.output_file, "_", "\\\\_");
- */
-                converter1 << "w\\_pat = " << (*it)*0.3 ;
+                converter1 << "w\\_pat = " << (*it)* 3  << "nS";
             }
             else
-                converter1 << "w_pat = " << (*it)*0.3 ;
+                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
             inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
         }
         GenerateMultiSNRPlotFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.sdVSwPats)
+    {
+        std::vector<std::pair<std::string, double> > inputs;
+        std::ostringstream converter;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-SD-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateSDvsWPatFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.meanVSwPats)
+    {
+        std::vector<std::pair<std::string, double> > inputs;
+        std::ostringstream converter;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-Means-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateMeansvsWPatFromFile(inputs);
     }
     if(plot_this.wPats.size() != 0 && plot_this.snrVSwPats)
     {
@@ -231,7 +332,7 @@ main ( int ac, char *av[] )
         }
         GenerateSNRvsWPatFromFile(inputs);
     }
-    if(!plot_this.from_file && ! plot_this.cumVSover && plot_this.wPats.size() == 0)
+    if(plot_this.processRas)
     {
         /*  At the most, use 20 threads, other wise WAIT */
         threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
