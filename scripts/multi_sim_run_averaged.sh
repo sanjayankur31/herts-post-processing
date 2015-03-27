@@ -19,9 +19,9 @@
 # File : multi_sim_run_averaged.sh
 #
 
-kvals="5 6 8 10 12"
+kvals="5 6 7"
 
-averaged_dir="multi-kvals-averaged-overwritten"
+averaged_dir="multi-kvals-averaged-cumulative"
 mkdir "$averaged_dir"
 
 runs="$1"
@@ -119,8 +119,7 @@ do
 done
 
 pushd "$averaged_dir"
-    ~/bin/research-bin/postprocess -o '5\\_wPats-averaged' -W 5 -W 6 -W 8 -W 10 -W 12 -w -m -d -r -n -D
+    ~/bin/research-bin/postprocess -o '5\\_wPats-averaged' -W 5 -W 6 -W 7 -w -m -d -r -n -D
 popd
-
 
 echo "All done. Hopefully, everything went as expected."
