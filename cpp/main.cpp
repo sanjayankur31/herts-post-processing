@@ -72,15 +72,17 @@ main ( int ac, char *av[] )
             ("snr,s","Plot SNR plots after processing ras files?")
             ("print-snr,S","Print SNR data after processing ras files?")
             ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
-            ("generate-cum-_VS_-over-snr-plot-from-file,t","Generate cumulative _VS_ overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
-            ("generate-snr-_VS_-wpats-plot-from-file,w","Also generate snr _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
-            ("generate-means-_VS_-wpats-plot-from-file,m","Also generate mean _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
-            ("generate-std-_VS_-wpats-plot-from-file,d","Also generate std _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
+            ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative _VS_ overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
+            ("generate-snr-vs-wpats-plot-from-file,w","Also generate snr _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
+            ("generate-means-vs-wpats-plot-from-file,m","Also generate mean _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
+            ("generate-std-vs-wpats-plot-from-file,d","Also generate std _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("pats,W", po::value<std::vector<double> >(&(plot_this.wPats))-> multitoken(), "w_pat values that input files are available for")
             ("multiSNR,r","Multi SNR graph requires -W values to be given")
             ("multiMean,n","Multi Mean graph requires -W values to be given")
             ("multiSTD,D","Multi STD graph requires -W values to be given")
-            ("png,p", "Generate graphs in png. Default is svg.");
+            ("png,p", "Generate graphs in png. Default is svg.")
+            ("singleMeanAndSTD,k","Generate a graph with mean and std from one set of data files 00-{Mean,STD}-data.txt")
+            ("multiMeanAndSTD,K","Generate a graph with multiple mean and std plots")
             ;
 
 
@@ -137,22 +139,22 @@ main ( int ac, char *av[] )
                 plot_this.processRas = false;
                 plot_this.Metrics_from_file = true;
             }
-            if (vm.count("generate-cum-_VS_-over-snr-plot-from-file"))
+            if (vm.count("generate-cum-vs-over-snr-plot-from-file"))
             {
                 plot_this.cum_VS_over = true;
                 plot_this.processRas = false;
             }
-            if (vm.count("generate-snr-_VS_-wpats-plot-from-file"))
+            if (vm.count("generate-snr-vs-wpats-plot-from-file"))
             {
                 plot_this.processRas = false;
                 plot_this.snr_VS_wPats = true;
             }
-            if (vm.count("generate-means-_VS_-wpats-plot-from-file"))
+            if (vm.count("generate-means-vs-wpats-plot-from-file"))
             {
                 plot_this.processRas = false;
                 plot_this.mean_VS_wPats = true;
             }
-            if (vm.count("generate-std-_VS_-wpats-plot-from-file"))
+            if (vm.count("generate-std-vs-wpats-plot-from-file"))
             {
                 plot_this.processRas = false;
                 plot_this.std_VS_wPats = true;
@@ -180,6 +182,18 @@ main ( int ac, char *av[] )
             {
                 plot_this.processRas = false;
                 plot_this.multiSTD = true;
+            }
+            if (vm.count("singleMeanAndSTD"))
+            {
+                plot_this.processRas = false;
+                plot_this.singleMeanAndSTD = true;
+                plot_this.multiMeanAndSTD = false;
+            }
+            if (vm.count("multiMeanAndSTD"))
+            {
+                plot_this.processRas = false;
+                plot_this.singleMeanAndSTD = false;
+                plot_this.multiMeanAndSTD = true;
             }
         }
 
@@ -209,156 +223,6 @@ main ( int ac, char *av[] )
     /*-----------------------------------------------------------------------------
      *  MAIN LOGIC BEGINS HERE
      *-----------------------------------------------------------------------------*/
-    if(plot_this.Metrics_from_file)
-    {
-        /*  No post processing, we have a file, we'll plot from it */
-        GenerateSNRPlotFromFile("00-SNR-data.txt");
-        GenerateMeanPlotFromFile("00-Mean-data.txt");
-        GenerateSTDPlotFromFile("00-STD-data.txt");
-        GenerateMeanNoisePlotFromFile("00-Mean-noise-data.txt");
-        GenerateSTDNoisePlotFromFile("00-STD-noise-data.txt");
-    }
-    if(plot_this.cum_VS_over)
-    {
-        std::vector<std::pair<std::string, std::string> > inputs;
-        inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-cumulative.txt", "cumulative"));
-        inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-overwritten.txt", "overwritten"));
-        GenerateMultiSNRPlotFromFile(inputs);
-    }
-    if(plot_this.wPats.size() != 0 && plot_this.multiMean)
-    {
-        std::vector<std::pair<std::string, std::string> > inputs;
-        std::ostringstream converter;
-        std::ostringstream converter1;
-        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
-        {
-            converter.clear();
-            converter.str("");
-            converter1.clear();
-            converter1.str("");
-            converter << "00-Mean-data-k-w-" << *it << ".txt";
-            std::cout << converter.str();
-            if(!plot_this.formatPNG)
-            {
-                converter1 << "w\\_pat = " << (*it)* 3 << "nS" ;
-            }
-            else
-                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
-            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
-        }
-        GenerateMultiMeanPlotFromFile(inputs);
-    }
-    if(plot_this.wPats.size() != 0 && plot_this.multiSTD)
-    {
-        std::vector<std::pair<std::string, std::string> > inputs;
-        std::ostringstream converter;
-        std::ostringstream converter1;
-        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
-        {
-            converter.clear();
-            converter.str("");
-            converter1.clear();
-            converter1.str("");
-            converter << "00-STD-data-k-w-" << *it << ".txt";
-            std::cout << converter.str();
-            if(!plot_this.formatPNG)
-            {
-                converter1 << "w\\_pat = " << (*it)* 3  << "nS";
-            }
-            else
-                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
-            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
-        }
-        GenerateMultiSTDPlotFromFile(inputs);
-    }
-    if(plot_this.wPats.size() != 0 && plot_this.multiSNR)
-    {
-        std::vector<std::pair<std::string, std::string> > inputs;
-        std::ostringstream converter;
-        std::ostringstream converter1;
-        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
-        {
-            converter.clear();
-            converter.str("");
-            converter1.clear();
-            converter1.str("");
-            converter << "00-SNR-data-k-w-" << *it << ".txt";
-            std::cout << converter.str();
-            if(!plot_this.formatPNG)
-            {
-                converter1 << "w\\_pat = " << (*it)* 3  << "nS";
-            }
-            else
-                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
-            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
-        }
-        GenerateMultiSNRPlotFromFile(inputs);
-    }
-    if(plot_this.wPats.size() != 0 && plot_this.std_VS_wPats)
-    {
-        std::vector<std::pair<std::string, double> > inputs;
-        std::ostringstream converter;
-        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
-        {
-            converter.clear();
-            converter.str("");
-            converter << "00-STD-data-k-w-" << *it << ".txt";
-            std::cout << converter.str();
-            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
-        }
-        GenerateSTD_VS_WPatFromFile(inputs);
-
-        inputs.clear();
-        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
-        {
-            converter.clear();
-            converter.str("");
-            converter << "00-STD-noise-data-k-w-" << *it << ".txt";
-            std::cout << converter.str();
-            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
-        }
-        GenerateSTDNoise_VS_WPatFromFile(inputs);
-    }
-    if(plot_this.wPats.size() != 0 && plot_this.mean_VS_wPats)
-    {
-        std::vector<std::pair<std::string, double> > inputs;
-        std::ostringstream converter;
-        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
-        {
-            converter.clear();
-            converter.str("");
-            converter << "00-Mean-data-k-w-" << *it << ".txt";
-            std::cout << converter.str();
-            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
-        }
-
-        GenerateMean_VS_WPatFromFile(inputs);
-
-        inputs.clear();
-        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
-        {
-            converter.clear();
-            converter.str("");
-            converter << "00-Mean-noise-data-k-w-" << *it << ".txt";
-            std::cout << converter.str();
-            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
-        }
-        GenerateMeanNoise_VS_WPatFromFile(inputs);
-    }
-    if(plot_this.wPats.size() != 0 && plot_this.snr_VS_wPats)
-    {
-        std::vector<std::pair<std::string, double> > inputs;
-        std::ostringstream converter;
-        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
-        {
-            converter.clear();
-            converter.str("");
-            converter << "00-SNR-data-k-w-" << *it << ".txt";
-            std::cout << converter.str();
-            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
-        }
-        GenerateSNR_VS_WPatFromFile(inputs);
-    }
     if(plot_this.processRas)
     {
         /*  At the most, use 20 threads, other wise WAIT */
@@ -460,8 +324,304 @@ main ( int ac, char *av[] )
             PrintSNRDataToFile(snr_data);
         }
 
-        global_clock_end = clock();
-        std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";
     }
+
+    if(plot_this.Metrics_from_file)
+    {
+        /*  No post processing, we have a file, we'll plot from it */
+        GenerateSNRPlotFromFile("00-SNR-data.txt");
+        GenerateMeanPlotFromFile("00-Mean-data.txt");
+        GenerateSTDPlotFromFile("00-STD-data.txt");
+        GenerateMeanNoisePlotFromFile("00-Mean-noise-data.txt");
+        GenerateSTDNoisePlotFromFile("00-STD-noise-data.txt");
+    }
+    if(plot_this.cum_VS_over)
+    {
+        std::vector<std::pair<std::string, std::string> > inputs;
+        inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-cumulative.txt", "cumulative"));
+        inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-overwritten.txt", "overwritten"));
+        GenerateMultiSNRPlotFromFile(inputs);
+    }
+    if(plot_this.singleMeanAndSTD)
+    {
+        std::vector<boost::tuple<std::string, std::string, std::string> > inputs;
+        inputs.emplace_back(boost::tuple<std::string, std::string, std::string> ("00-Mean-data.txt", "00-STD-data.txt", " "));
+        GenerateMultiMeanWithSTDFromFiles(inputs, "MeanWithSTD");
+
+        inputs.clear();
+        inputs.emplace_back(boost::tuple<std::string, std::string, std::string> ("00-Mean-noise-data.txt", "00-STD-noise-data.txt", " "));
+        GenerateMultiMeanWithSTDFromFiles(inputs, "MeanWithSTD-noise");
+
+        inputs.clear();
+        inputs.emplace_back(boost::tuple<std::string, std::string, std::string> ("00-Mean-data.txt", "00-STD-data.txt", "p"));
+        inputs.emplace_back(boost::tuple<std::string, std::string, std::string> ("00-Mean-noise-data.txt", "00-STD-noise-data.txt", "b"));
+        GenerateMultiMeanWithSTDFromFiles(inputs, "MeanWithSTD-both");
+
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.multiMeanAndSTD)
+    {
+        std::vector<boost::tuple<std::string, std::string, std::string> > inputs;
+        std::ostringstream converter;
+        std::ostringstream converter1;
+        std::ostringstream converter2;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter2.clear();
+            converter2.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-Mean-data-k-w-" << *it << ".txt";
+            converter1 << "00-STD-data-k-w-" << *it << ".txt";
+            std::cout << converter.str() << ", " << converter1.str();
+            if(!plot_this.formatPNG)
+            {
+                converter2 << "w\\_pat = " << (*it)* 3 << "nS" ;
+            }
+            else
+                converter2 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(boost::tuple<std::string, std::string, std::string>(converter.str(), converter1.str(), converter2.str()));
+        }
+        GenerateMultiMeanWithSTDFromFiles(inputs, "MultiMeanWithSTD");
+        inputs.clear();
+
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter2.clear();
+            converter2.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-Mean-noise-data-k-w-" << *it << ".txt";
+            converter1 << "00-STD-noise-data-k-w-" << *it << ".txt";
+            std::cout << converter.str() << ", " << converter1.str();
+            if(!plot_this.formatPNG)
+            {
+                converter2 << "w\\_pat = " << (*it)* 3 << "nS" ;
+            }
+            else
+                converter2 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(boost::tuple<std::string, std::string, std::string>(converter.str(), converter1.str(), converter2.str()));
+        }
+        GenerateMultiMeanWithSTDFromFiles(inputs, "MultiMeanWithSTD-noise");
+
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter2.clear();
+            converter2.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-Mean-data-k-w-" << *it << ".txt";
+            converter1 << "00-STD-data-k-w-" << *it << ".txt";
+            std::cout << converter.str() << ", " << converter1.str();
+            if(!plot_this.formatPNG)
+            {
+                converter2 << "p - w\\_pat = " << (*it)* 3 << "nS" ;
+            }
+            else
+                converter2 << "p - w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(boost::tuple<std::string, std::string, std::string>(converter.str(), converter1.str(), converter2.str()));
+        }
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter2.clear();
+            converter2.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-Mean-noise-data-k-w-" << *it << ".txt";
+            converter1 << "00-STD-noise-data-k-w-" << *it << ".txt";
+            std::cout << converter.str() << ", " << converter1.str();
+            if(!plot_this.formatPNG)
+            {
+                converter2 << "b - w\\_pat = " << (*it)* 3 << "nS" ;
+            }
+            else
+                converter2 << "b - w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(boost::tuple<std::string, std::string, std::string>(converter.str(), converter1.str(), converter2.str()));
+        }
+        GenerateMultiMeanWithSTDFromFiles(inputs, "MultiMeanWithSTD-both");
+
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.multiMean)
+    {
+        std::vector<std::pair<std::string, std::string> > inputs;
+        std::ostringstream converter;
+        std::ostringstream converter1;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-Mean-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            if(!plot_this.formatPNG)
+            {
+                converter1 << "w\\_pat = " << (*it)* 3 << "nS" ;
+            }
+            else
+                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
+        }
+        GenerateMultiMeanPlotFromFile(inputs);
+        inputs.clear();
+
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-Mean-noise-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            if(!plot_this.formatPNG)
+            {
+                converter1 << "w\\_pat = " << (*it)* 3 << "nS" ;
+            }
+            else
+                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
+        }
+        GenerateMultiMeanNoisePlotFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.multiSTD)
+    {
+        std::vector<std::pair<std::string, std::string> > inputs;
+        std::ostringstream converter;
+        std::ostringstream converter1;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-STD-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            if(!plot_this.formatPNG)
+            {
+                converter1 << "w\\_pat = " << (*it)* 3  << "nS";
+            }
+            else
+                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
+        }
+        GenerateMultiSTDPlotFromFile(inputs);
+
+        inputs.clear();
+
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-STD-noise-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            if(!plot_this.formatPNG)
+            {
+                converter1 << "w\\_pat = " << (*it)* 3  << "nS";
+            }
+            else
+                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
+        }
+        GenerateMultiSTDNoisePlotFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.multiSNR)
+    {
+        std::vector<std::pair<std::string, std::string> > inputs;
+        std::ostringstream converter;
+        std::ostringstream converter1;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter1.clear();
+            converter1.str("");
+            converter << "00-SNR-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            if(!plot_this.formatPNG)
+            {
+                converter1 << "w\\_pat = " << (*it)* 3  << "nS";
+            }
+            else
+                converter1 << "w_pat = " << (*it)* 3 << "nS" ;
+            inputs.emplace_back(std::pair<std::string, std::string>(converter.str(), converter1.str()));
+        }
+        GenerateMultiSNRPlotFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.std_VS_wPats)
+    {
+        std::vector<std::pair<std::string, double> > inputs;
+        std::ostringstream converter;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-STD-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateSTD_VS_WPatFromFile(inputs);
+
+        inputs.clear();
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-STD-noise-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateSTDNoise_VS_WPatFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.mean_VS_wPats)
+    {
+        std::vector<std::pair<std::string, double> > inputs;
+        std::ostringstream converter;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-Mean-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+
+        GenerateMean_VS_WPatFromFile(inputs);
+
+        inputs.clear();
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-Mean-noise-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateMeanNoise_VS_WPatFromFile(inputs);
+    }
+    if(plot_this.wPats.size() != 0 && plot_this.snr_VS_wPats)
+    {
+        std::vector<std::pair<std::string, double> > inputs;
+        std::ostringstream converter;
+        for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
+        {
+            converter.clear();
+            converter.str("");
+            converter << "00-SNR-data-k-w-" << *it << ".txt";
+            std::cout << converter.str();
+            inputs.emplace_back(std::pair<std::string, double>(converter.str(), (*it)*0.3));
+        }
+        GenerateSNR_VS_WPatFromFile(inputs);
+    }
+    global_clock_end = clock();
+    std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";
     return 0;
 }				/* ----------  end of function main  ---------- */

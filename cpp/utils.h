@@ -28,6 +28,7 @@
 #include <thread>
 #include <boost/program_options.hpp>
 #include <boost/iostreams/device/mapped_file.hpp>
+#include <boost/tuple/tuple.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <iostream>
 #include <fstream>
@@ -99,7 +100,7 @@ struct param parameters;
 
 struct what_to_plot
 {
-    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), Metrics_from_file (false), cum_VS_over(false), multiSNR(false), multiMean(false), multiSTD(false), snr_VS_wPats(false), mean_VS_wPats(false), std_VS_wPats(false), formatPNG(false), processRas(false) {}
+    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), Metrics_from_file (false), cum_VS_over(false), multiSNR(false), multiMean(false), multiSTD(false), snr_VS_wPats(false), mean_VS_wPats(false), std_VS_wPats(false), formatPNG(false), processRas(false), singleMeanAndSTD(false), multiMeanAndSTD(false) {}
     bool master;
     bool pattern_graphs;
     bool snr_graphs;
@@ -114,6 +115,8 @@ struct what_to_plot
     bool std_VS_wPats;
     bool formatPNG;
     bool processRas;
+    bool singleMeanAndSTD;
+    bool multiMeanAndSTD;
 };
 
 struct what_to_plot plot_this;
@@ -717,7 +720,7 @@ PlotSNRGraphs (std::multimap <double, struct SNR_data> snr_data)
         gp << "set output \"SNR.png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
     }
-    gp << "set title \"SNR _VS_ number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set title \"SNR  vs  number of patterns - " << parameters.output_file << "\" \n";
 
 
 #if  0     /* ----- #if 0 : If0Label_2 ----- */
@@ -867,7 +870,7 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
         gp << "set output \"" << metric << ".png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
     }
-    gp << "set title \"" << metric << " _VS_ number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set title \"" << metric << "  vs  number of patterns - " << parameters.output_file << "\" \n";
 
 
     for (unsigned int i = 0; i < parameters.num_pats; i++)
@@ -990,7 +993,7 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
         gp << "set output \"" << title << "-multi.png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
     }
-    gp << "set title \"" << title << " _VS_ number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set title \"" << title << "  vs  number of patterns - " << parameters.output_file << "\" \n";
     gp << "set ylabel \"" << title << "\"; \n";
     gp << "set xtics 1; \n";
     if (title.compare("SNR") == 0)
@@ -1005,8 +1008,8 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
     {
         lc++;
         std::ifstream file_stream;
-        std::string dataFile(it->first);
-        file_stream.open(dataFile.c_str() , std::ifstream::in);
+        std::string data_file(it->first);
+        file_stream.open(data_file.c_str() , std::ifstream::in);
         unsigned int numlines = std::count(std::istreambuf_iterator<char>(file_stream),std::istreambuf_iterator<char>(), '\n');
         file_stream.close();
         std::string addendum(it->second);
@@ -1017,7 +1020,7 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
             std::cerr << "initial check failed. numlines = " << numlines << " numpats = " << parameters.num_pats << "\n";
         }
 
-        file_stream.open(dataFile.c_str(), std::ifstream::in);
+        file_stream.open(data_file.c_str(), std::ifstream::in);
 
         for (unsigned int i = 0; i < parameters.num_pats; i++)
         {
@@ -1132,14 +1135,14 @@ GenerateMetric_VS_WPatFromFile(std::vector<std::pair<std::string, double> > inpu
     {
         gp << "set output \"" << title << "-w_pat.svg\" \n";
         gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
-        gp << "set title \"" << title << " _VS_  w\\\\_pat - " << parameters.output_file << "\" \n";
+        gp << "set title \"" << title << "  vs   w\\\\_pat - " << parameters.output_file << "\" \n";
         gp << "set xlabel \"w\\\\_pat\"; \n";
     }
     else
     {
         gp << "set output \"" << title << "-w_pat.png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
-        gp << "set title \"" << title << " _VS_ w_pat - " << parameters.output_file << "\" \n";
+        gp << "set title \"" << title << "  vs  w_pat - " << parameters.output_file << "\" \n";
         gp << "set xlabel \"w_pat\"; \n";
     }
     gp << "set ylabel \"" << title << "\"; \n";
@@ -1278,4 +1281,112 @@ GenerateSTDNoise_VS_WPatFromFile ( std::vector<std::pair<std::string, double> > 
     GenerateMetric_VS_WPatFromFile(inputs, "STDNoise");
 }		/* -----  end of function GenerateSTDNoise_VS_WPatFromFile  ----- */
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GenerateMultiMeanWithSTDFromFiles
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::string, std::string> > inputs, std::string title )
+{
+    Gnuplot gp;
+    std::ostringstream line_command;
+    std::vector<std::vector<boost::tuple<double, double, double> > > all_points_means;
+    unsigned int lc = 0;
+
+    /* Initial set up */
+    if (!plot_this.formatPNG)
+    {
+        gp << "set output \"" << title;
+        if(inputs.size() > 1)
+           gp << "-multi.svg\" \n";
+        else
+            gp << ".svg\" \n";
+        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+    }
+    else
+    {
+        gp << "set output \"" << title;
+        if(inputs.size() > 1)
+           gp << "-multi.png\" \n";
+        else
+            gp << ".png\" \n";
+        gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+    }
+    gp << "set title \"" << title << "  vs  number of patterns - " << parameters.output_file << "\" \n";
+    gp << "set ylabel \"" << title << "\"; \n";
+    gp << "set xtics 1; \n";
+    if (title.compare("SNR") == 0)
+        gp << "set ytics 1; \n";
+    else
+        gp << "set ytics autofreq; \n";
+    gp << "set grid; \n";
+    gp << "set xlabel \"Number of patterns stored\"; \n";
+    line_command << "plot ";
+
+    for (std::vector<boost::tuple<std::string, std::string, std::string> >::iterator it = inputs.begin(); it != inputs.end(); it++)
+    {
+        lc++;
+        std::ifstream file_stream_mean;
+        std::ifstream file_stream_std;
+        std::string data_file_mean(it->get<0>());
+        std::string data_file_std(it->get<1>());
+        file_stream_mean.open(data_file_mean.c_str() , std::ifstream::in);
+        file_stream_std.open(data_file_std.c_str() , std::ifstream::in);
+
+        unsigned int numlines_mean = std::count(std::istreambuf_iterator<char>(file_stream_mean),std::istreambuf_iterator<char>(), '\n');
+        unsigned int numlines_std = std::count(std::istreambuf_iterator<char>(file_stream_std),std::istreambuf_iterator<char>(), '\n');
+
+        file_stream_mean.close();
+        file_stream_std.close();
+        std::string addendum(it->get<2>());
+        std::vector<boost::tuple<double, double, double> > points_means;
+
+        if( (parameters.num_pats * (parameters.num_pats + 3)/2) != numlines_mean || numlines_mean != numlines_std)
+        {
+            std::cerr << "initial check failed. numlines = " << numlines_mean << ", " << numlines_std << " numpats = " << parameters.num_pats << "\n";
+        }
+
+        file_stream_mean.open(data_file_mean.c_str(), std::ifstream::in);
+        file_stream_std.open(data_file_std.c_str() , std::ifstream::in);
+
+        for (unsigned int i = 0; i < parameters.num_pats; i++)
+        {
+            double mean_snr = 0.;
+            double std_snr = 0.;
+            for(unsigned int j = 0; j <= i; j++)
+            {
+                /*  Read but ignore */
+                double snr_value = 0.;
+                file_stream_mean >> snr_value;
+                file_stream_std >> snr_value;
+            }
+            file_stream_mean >> mean_snr;
+            file_stream_std >> std_snr;
+            std_snr /= 2.0;
+            std::cout << i+1 << ":\t" << mean_snr << ", " << std_snr<< "\n";
+            points_means.emplace_back(boost::tuple<double, double, double>(i+1, mean_snr, std_snr));
+        }
+        all_points_means.emplace_back(points_means);
+        points_means.clear();
+        line_command << "'-' using 1:2:3 with yerrorbars title 'std" <<  " - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
+        line_command << "'-' using 1:2:3 with lines title 'mean" << " - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
+        file_stream_mean.close();
+    }
+
+
+    gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
+    gp << line_command.str();
+    gp << " ;\n";
+
+    for (std::vector<std::vector<boost::tuple<double,double, double> > >::iterator it = all_points_means.begin(); it != all_points_means.end(); it++)
+    {
+        gp.send1d(*it);
+        gp.send1d(*it);
+    }
+
+    return ;
+}		/* -----  end of function GenerateMultiMeanWithSTDFromFiles  ----- */
 #endif   /* ----- #ifndef utils_INC  ----- */
