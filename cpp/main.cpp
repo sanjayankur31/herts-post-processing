@@ -406,6 +406,7 @@ main ( int ac, char *av[] )
             inputs.emplace_back(boost::tuple<std::string, std::string, std::string>(converter.str(), converter1.str(), converter2.str()));
         }
         GenerateMultiMeanWithSTDFromFiles(inputs, "MultiMeanWithSTD-noise");
+        inputs.clear();
 
         for (std::vector<double>::iterator it = plot_this.wPats.begin(); it != plot_this.wPats.end(); it++)
         {
