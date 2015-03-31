@@ -19,7 +19,7 @@
 # File : multi_sim_run_averaged.sh
 #
 
-kvals="5 6 7"
+kvals="6"
 
 averaged_dir="multi-kvals-averaged-cumulative"
 mkdir "$averaged_dir"
@@ -114,12 +114,12 @@ do
         cp "$averaged_mean_noise_file" "00-Mean-noise-data.txt"
         cp "$averaged_std_file" "00-STD-data.txt"
         cp "$averaged_std_noise_file" "00-STD-noise-data.txt"
-        ~/bin/research-bin/postprocess -o '5\\_wPats-averaged' -g
+        ~/bin/research-bin/postprocess -o 'wPats-averaged' -g
     popd
 done
 
-pushd "$averaged_dir"
-    ~/bin/research-bin/postprocess -o '5\\_wPats-averaged' -W 5 -W 6 -W 7 -w -m -d -r -n -D
-popd
+#pushd "$averaged_dir"
+#   ~/bin/research-bin/postprocess -o 'wPats-averaged' -W 5 -W 6 -W 7 -W 8 -w -m -d -r -n -D -K
+#popd
 
 echo "All done. Hopefully, everything went as expected."
