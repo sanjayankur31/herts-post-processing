@@ -72,7 +72,7 @@ main ( int ac, char *av[] )
             ("snr,s","Plot SNR plots after processing ras files?")
             ("print-snr,S","Print SNR data after processing ras files?")
             ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
-            ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative _VS_ overwritten snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
+            ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative _VS_ clipped snr from two printed files 00-SNR-data-{clipped,cumulative}.txt.")
             ("generate-snr-vs-wpats-plot-from-file,w","Also generate snr _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("generate-means-vs-wpats-plot-from-file,m","Also generate mean _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("generate-std-vs-wpats-plot-from-file,d","Also generate std _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
@@ -80,7 +80,7 @@ main ( int ac, char *av[] )
             ("multiSNR,r","Multi SNR graph requires -W values to be given")
             ("multiMean,n","Multi Mean graph requires -W values to be given")
             ("multiSTD,D","Multi STD graph requires -W values to be given")
-            ("png,p", "Generate graphs in png. Default is svg.")
+            ("png,P", "Generate graphs in png. Default is svg.")
             ("singleMeanAndSTD,k","Generate a graph with mean and std from one set of data files 00-{Mean,STD}-data.txt")
             ("multiMeanAndSTD,K","Generate a graph with multiple mean and std plots")
             ;
@@ -339,7 +339,7 @@ main ( int ac, char *av[] )
     {
         std::vector<std::pair<std::string, std::string> > inputs;
         inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-cumulative.txt", "cumulative"));
-        inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-overwritten.txt", "overwritten"));
+        inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-overwritten.txt", "clipped"));
         GenerateMultiSNRPlotFromFile(inputs);
     }
     if(plot_this.singleMeanAndSTD)
