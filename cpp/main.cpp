@@ -72,7 +72,7 @@ main ( int ac, char *av[] )
             ("snr,s","Plot SNR plots after processing ras files?")
             ("print-snr,S","Print SNR data after processing ras files?")
             ("generate-snr-plot-from-file,g","Generate snr from a printed file 00-SNR-data.txt.")
-            ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative _VS_ clipped snr from two printed files 00-SNR-data-{clipped,cumulative}.txt.")
+            ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative _VS_ clipped snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
             ("generate-snr-vs-wpats-plot-from-file,w","Also generate snr _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("generate-means-vs-wpats-plot-from-file,m","Also generate mean _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
             ("generate-std-vs-wpats-plot-from-file,d","Also generate std _VS_ wpats plot along with snr-for-multiple-pats - picks wpats from arguments of W")
@@ -83,6 +83,7 @@ main ( int ac, char *av[] )
             ("png,P", "Generate graphs in png. Default is svg.")
             ("singleMeanAndSTD,k","Generate a graph with mean and std from one set of data files 00-{Mean,STD}-data.txt")
             ("multiMeanAndSTD,K","Generate a graph with multiple mean and std plots")
+            ("for-prints,f","Generate graphs for use in papers - this changes the tics and things so they're more visible when embedded in papers")
             ;
 
 
@@ -194,6 +195,10 @@ main ( int ac, char *av[] )
                 plot_this.processRas = false;
                 plot_this.singleMeanAndSTD = false;
                 plot_this.multiMeanAndSTD = true;
+            }
+            if (vm.count("for-prints"))
+            {
+                parameters.for_prints = true;
             }
         }
 
