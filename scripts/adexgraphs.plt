@@ -1,0 +1,27 @@
+# To generate the adexgraphs
+
+set terminal epslatex size 2.5,2.5 color colortext
+set output "adex.tex";
+
+#set border 3;
+unset border;
+unset xtics
+unset ytics
+#set xtics nomirror ('\(0\)' 0, '\(200\)' 0.2);
+#set ytics nomirror ('\(-70\)' -0.07, '\(0\)' 0, '\(20\)' 0.02);
+set yrange [-0.07:0.03]
+set xrange [0:0.20]
+set lmargin 3
+set bmargin 2
+# horizontal
+set arrow from graph -0.05,-0.05 to graph 0.05,-0.05 nohead lw 2
+# vertical
+set arrow from graph -0.05,-0.05 to graph -0.05,0.250 nohead lw 2
+
+set label '\(20ms\)' at graph -0.05,-0.1 
+set label '\(30mV\)' at graph -0.1,-0.05 rotate left
+
+#set ylabel 'membrane potential (\(mV)\)'
+#set xlabel 'time (\(ms)\)'
+
+plot "voltages-2000.txt" title "" with lines lc 1 lw 2;
