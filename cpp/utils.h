@@ -909,24 +909,13 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
     {
         int xvar = parameters.num_pats/4;
         gp << "set xtics nomirror " << xvar << "; \n";
+        int yvar = max_point/2;
+        gp << "set ytics nomirror " << yvar << "; \n";
     }
     else{
         gp << "set xtics 1; \n";
+        gp << "set ytics nomirror autofreq; \n";
     }
-    if (metric.compare("SNR") == 0)
-    {
-        if(plot_this.for_prints)
-        {
-            int yvar = max_point/2;
-            gp << "set ytics nomirror " << yvar << "; \n";
-        }
-        else
-        {
-            gp << "set ytics 1; \n";
-        }
-    }
-    else
-        gp << "set ytics autofreq; \n";
 
     gp << "set xlabel \"Number of patterns stored\"; \n";
     gp << "plot '-' with lines title 'mean " << metric << " - " << addendum.c_str() << "' lc " << lc << "; \n";
@@ -1078,24 +1067,13 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
     {
         int xvar = parameters.num_pats/4;
         gp << "set xtics nomirror " << xvar << "; \n";
+        int yvar = max_point/2;
+        gp << "set ytics nomirror " << yvar << "; \n";
     }
     else{
         gp << "set xtics 1; \n";
+        gp << "set ytics nomirror autofreq; \n";
     }
-    if (title.compare("SNR") == 0)
-    {
-        if(plot_this.for_prints)
-        {
-            int yvar = max_point/2;
-            gp << "set ytics nomirror " << yvar << "; \n";
-        }
-        else
-        {
-            gp << "set ytics 1; \n";
-        }
-    }
-    else
-        gp << "set ytics autofreq; \n";
 
     gp << plot_command.str();
     gp << line_command.str();
@@ -1345,19 +1323,11 @@ GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::st
     Gnuplot gp;
     std::ostringstream line_command;
     std::vector<std::vector<boost::tuple<double, double, double> > > all_points_means;
+    unsigned int max_point = 0;
     unsigned int lc = 0;
 
     /* Initial set up */
-    if (!plot_this.formatPNG)
-    {
-        gp << "set output \"" << title;
-        if(inputs.size() > 1)
-           gp << "-multi.svg\" \n";
-        else
-            gp << ".svg\" \n";
-        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
-    }
-    else
+    if (plot_this.formatPNG)
     {
         gp << "set output \"" << title;
         if(inputs.size() > 1)
@@ -1366,14 +1336,28 @@ GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::st
             gp << ".png\" \n";
         gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
     }
+    else if (plot_this.for_prints)
+    {
+        gp << "set term epslatex color colortext; \n";
+        gp << "set output \"" << title;
+        if(inputs.size() > 1)
+           gp << "-multi.tex\" \n";
+        else
+            gp << ".tex\" \n";
+        gp << "set border 3 \n";
+    }
+    else
+    {
+        gp << "set output \"" << title;
+        if(inputs.size() > 1)
+           gp << "-multi.svg\" \n";
+        else
+            gp << ".svg\" \n";
+        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+    }
     gp << "set title \"" << title << "  vs  number of patterns - " << parameters.output_file << "\" \n";
     gp << "set ylabel \"" << title << "\"; \n";
-    gp << "set xtics 1; \n";
-    if (title.compare("SNR") == 0)
-        gp << "set ytics 1; \n";
-    else
-        gp << "set ytics autofreq; \n";
-    gp << "set grid; \n";
+
     gp << "set xlabel \"Number of patterns stored\"; \n";
     line_command << "plot ";
 
@@ -1418,6 +1402,8 @@ GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::st
             file_stream_std >> std_snr;
             std_snr /= 2.0;
             std::cout << i+1 << ":\t" << mean_snr << ", " << std_snr<< "\n";
+            if (mean_snr > max_point)
+                max_point = ceil(mean_snr);
             points_means.emplace_back(boost::tuple<double, double, double>(i+1, mean_snr, std_snr));
         }
         all_points_means.emplace_back(points_means);
@@ -1427,6 +1413,19 @@ GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::st
         file_stream_mean.close();
     }
 
+    if(plot_this.for_prints)
+    {
+        int xvar = parameters.num_pats/4;
+        gp << "set xtics nomirror " << xvar << "; \n";
+        int yvar = max_point/2;
+        gp << "set ytics nomirror " << yvar << "; \n";
+    }
+    else
+    {
+        gp << "set xtics 1; \n";
+        gp << "set grid; \n";
+        gp << "set ytics nomirror autofreq; \n";
+    }
 
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
     gp << line_command.str();
