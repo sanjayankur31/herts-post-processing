@@ -1,4 +1,6 @@
 # To generate the adexgraphs
+# Shell command something like this:
+# LD_LIBRARY_PATH=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/auryn/src/.libs ~/bin/research-bin/adextest ; head -n 2000 voltages.txt > voltages-2000.txt; gnuplot ../../../../src/postprocess/scripts/adexgraphs.plt ; rm voltages.txt output.log -f; rename "adex" "4d" * ; sed -i "s/adex/4d/" 4d.tex; git add . ;
 
 set terminal epslatex size 2.5,2.5 color colortext
 set output "adex.tex";
