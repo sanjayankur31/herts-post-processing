@@ -198,7 +198,8 @@ main ( int ac, char *av[] )
             }
             if (vm.count("for-prints"))
             {
-                parameters.for_prints = true;
+                plot_this.for_prints = true;
+                plot_this.formatPNG = false;
             }
         }
 
