@@ -19,21 +19,21 @@
 # File : multi_sim_run_averaged.sh
 #
 
-kvals="6"
+chis="6"
 
-averaged_dir="multi-kvals-averaged-cumulative"
-mkdir "$averaged_dir"
+#averaged_dir="multi-chis-averaged-overwritten-constant-current-1"
+#mkdir "$averaged_dir"
 
 runs="$1"
-for kval in $(echo $kvals)
+for chi in $(echo $chis)
 do
-    sed -i "s/k_w_pat=.*/k_w_pat=$kval/" /home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/src/simulation_config.cfg
+    sed -i "s/chi=.*/chi=$chi/" /home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/src/simulation_config.cfg
     echo "simulation_config.cfg updated."
 
-    combined_dir="kval-""$kval"
+    combined_dir="chi-""$chi"
     mkdir "$combined_dir"
     cp /home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/src/simulation_config.cfg "$combined_dir"
-    cp /home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/src/simulation_config.cfg "$averaged_dir"
+    #cp /home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/src/simulation_config.cfg "$averaged_dir"
 
     for i in $(seq 1 "$runs")
     do
@@ -57,17 +57,17 @@ do
     done
     
     pushd "$combined_dir"
-        master_snr_file="00-SNR-data-k-w-""$kval"".txt-all"
-        master_mean_file="00-Mean-data-k-w-""$kval"".txt-all"
-        master_std_file="00-STD-data-k-w-""$kval"".txt-all"
-        master_mean_noise_file="00-Mean-noise-data-k-w-""$kval"".txt-all"
-        master_std_noise_file="00-STD-noise-data-k-w-""$kval"".txt-all"
+        master_snr_file="00-SNR-data-k-w-""$chi"".txt-all"
+        master_mean_file="00-Mean-data-k-w-""$chi"".txt-all"
+        master_std_file="00-STD-data-k-w-""$chi"".txt-all"
+        master_mean_noise_file="00-Mean-noise-data-k-w-""$chi"".txt-all"
+        master_std_noise_file="00-STD-noise-data-k-w-""$chi"".txt-all"
 
-        averaged_snr_file="00-SNR-data-k-w-""$kval"".txt"
-        averaged_mean_file="00-Mean-data-k-w-""$kval"".txt"
-        averaged_std_file="00-STD-data-k-w-""$kval"".txt"
-        averaged_mean_noise_file="00-Mean-noise-data-k-w-""$kval"".txt"
-        averaged_std_noise_file="00-STD-noise-data-k-w-""$kval"".txt"
+        averaged_snr_file="00-SNR-data-k-w-""$chi"".txt"
+        averaged_mean_file="00-Mean-data-k-w-""$chi"".txt"
+        averaged_std_file="00-STD-data-k-w-""$chi"".txt"
+        averaged_mean_noise_file="00-Mean-noise-data-k-w-""$chi"".txt"
+        averaged_std_noise_file="00-STD-noise-data-k-w-""$chi"".txt"
 
         touch "$master_snr_file"
         touch "$master_mean_file"
@@ -108,18 +108,18 @@ do
         bc -l < "$master_std_file""-cmd" > "$averaged_std_file"
         bc -l < "$master_std_noise_file""-cmd" > "$averaged_std_noise_file"
 
-        cp "$averaged_snr_file" "$averaged_std_file" "$averaged_mean_file" "$averaged_std_noise_file" "$averaged_mean_noise_file" ../"$averaged_dir" -v
+#        cp "$averaged_snr_file" "$averaged_std_file" "$averaged_mean_file" "$averaged_std_noise_file" "$averaged_mean_noise_file" ../"$averaged_dir" -v
         cp "$averaged_snr_file" "00-SNR-data.txt"
         cp "$averaged_mean_file" "00-Mean-data.txt"
         cp "$averaged_mean_noise_file" "00-Mean-noise-data.txt"
         cp "$averaged_std_file" "00-STD-data.txt"
         cp "$averaged_std_noise_file" "00-STD-noise-data.txt"
-        ~/bin/research-bin/postprocess -o 'wPats-averaged' -g
+        ~/bin/research-bin/postprocess -o 'wPats-averaged' -g -k
     popd
 done
 
 #pushd "$averaged_dir"
-#   ~/bin/research-bin/postprocess -o 'wPats-averaged' -W 5 -W 6 -W 7 -W 8 -w -m -d -r -n -D -K
+#   ~/bin/research-bin/postprocess -o 'bg_current = 4pA' -k -P
 #popd
 
 echo "All done. Hopefully, everything went as expected."
