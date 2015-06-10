@@ -28,6 +28,6 @@ set label '\(30mV\)' at graph -0.1,-0.05 rotate left
 
 # changes for 4f
 # LD_LIBRARY_PATH=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/auryn/src/.libs ~/bin/research-bin/adextest ; head -n 5000 voltages.txt > voltages-5000.txt; gnuplot ../../../../src/postprocess/scripts/adexgraphs.plt ; rm voltages.txt output.log -f; rename "adex" "4f" * ; sed -i "s/adex/4f/" 4f.tex; git add . ;
-set xrange [0:0.50]
+set xrange [5:5.50]
 set label '\(50ms\)' at graph -0.05,-0.1 
 plot "voltages-5000.txt" title "" with lines lc 1 lw 2;

@@ -559,9 +559,13 @@ function plotoverallplots ()
     ) &
     # All the weight files should have the same number of columns. Do I need to check this?
     # TODO: modify the command after checking individual files. I could probably use if else to append commands but it'll make the script a lot more messy. I should still look into it to prevent future confusions
-    numberofcolsSTDP=$(awk '{print NF; exit}' "$timestamp"".ie_stdp.weightinfo-allmerged")
-    numberofcolsSTDP=$((numberofcolsSTDP -1))
-    echo "Columns in STDP weights: $numberofcolsSTDP"
+    numberofcolsWeightFiles=$(awk '{print NF; exit}' "$timestamp"".ie_stdp.weightinfo-allmerged")
+    totalConnectionsIE=$(echo "8000*2000*0.02" | bc -l)
+    totalConnectionsEE=$(echo "8000*8000*0.02" | bc -l)
+    totalConnectionsEI="$totalConnectionsIE"
+    totalConnectionsII=$(echo "2000*2000*0.02" | bc -l)
+    totalConnectionsEXTE=$(echo "1000*8000*0.02" | bc -l)
+    echo "Columns in merged weight files: $numberofcolsWeightFiles"
     wait
 
     if ls *_ie_stdp.weightinfo 1> /dev/null 2>&1;
@@ -576,7 +580,7 @@ function plotoverallplots ()
             echo "Rows in E/I files: `cat rowsE.temp`"
             rm rowsE.temp rowsI.temp -fv
             #Firing rate evolution throughout the simulation
-            gnuplot -e "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,80\" size 15120,15120 linewidth 2; set grid; set output \"""$timestamp"".timegraphwithweights.png\"; set size 1,1; set xtics rotate 250; set multiplot; set title \"Evolution of firing rates\"; set xlabel \"Time (s)\"; set ylabel \"Firing rates (Hz)\"; set origin 0.0, 0.5; set size 1,0.5; plot \"""$timestamp"".e.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsE""] column(col))/""$numberofcolsE"") lc rgb \"blue\" t \"Average Excitatory firing rate (Hz)\" with lines, \"""$timestamp"".i.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsI""] column(col))/""$numberofcolsI"") lc rgb \"red\" t \"Average Inhibitory Firing rate (Hz)\" with lines; set origin 0.0,0.0; set size 1,0.5; set ylabel \"Synaptic weight (nS)\"; set title \"Evolution of synapses\"; plot \"""$timestamp"".ie_stdp.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") lc rgb \"brown\" t \"Average IE (plastic)\" with lines, \"""$timestamp"".ii_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average II (static)\" with lines, \"""$timestamp"".ee_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"")  t \"Average EE (static)\" with lines, \"""$timestamp"".ei_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EI (static)\" with lines, \"""$timestamp"".exte_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsSTDP""] column(col))/""$numberofcolsSTDP"") t \"Average EXTE (static)\" with lines" &
+            gnuplot -e "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1512,1512 linewidth 2; set grid; set output \"""$timestamp"".timegraphwithweights.png\"; set size 1,1; set xtics rotate 250; set multiplot; set title \"Evolution of firing rates\"; set xlabel \"Time (s)\"; set ylabel \"Firing rates (Hz)\"; set origin 0.0, 0.5; set size 1,0.5; plot \"""$timestamp"".e.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsE""] column(col))/""$numberofcolsE"") lc rgb \"blue\" t \"Average Excitatory firing rate (Hz)\" with lines, \"""$timestamp"".i.rate-allmerged\" u 1 : ((sum [col=2:""$numberofcolsI""] column(col))/""$numberofcolsI"") lc rgb \"red\" t \"Average Inhibitory Firing rate (Hz)\" with lines; set origin 0.0,0.0; set size 1,0.5; set ylabel \"Synaptic weight (times gleak)\"; set title \"Evolution of synapses\"; plot \"""$timestamp"".ie_stdp.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsWeightFiles""] column(col))/""$totalConnectionsIE"") lc rgb \"brown\" t \"Average IE (plastic)\" with lines, \"""$timestamp"".ii_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsWeightFiles""] column(col))/""$totalConnectionsII"")  t \"Average II (static)\" with lines, \"""$timestamp"".ee_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsWeightFiles""] column(col))/""$totalConnectionsEE"")  t \"Average EE (static)\" with lines, \"""$timestamp"".ei_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsWeightFiles""] column(col))/""$totalConnectionsEI"") t \"Average EI (static)\" with lines, \"""$timestamp"".exte_static.weightinfo-allmerged\" u 1 : ((sum [col=2:""$numberofcolsWeightFiles""] column(col))/""$totalConnectionsEXTE"") t \"Average EXTE (static)\" with lines" &
 
             echo "Complete. Generated $timestamp.timegraphwithweights.png"
         fi
