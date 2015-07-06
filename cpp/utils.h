@@ -100,7 +100,7 @@ struct param parameters;
 
 struct what_to_plot
 {
-    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), Metrics_from_file (false), cum_VS_over(false), multiSNR(false), multiMean(false), multiSTD(false), snr_VS_wPats(false), mean_VS_wPats(false), std_VS_wPats(false), formatPNG(false), processRas(false), singleMeanAndSTD(false), multiMeanAndSTD(false), for_prints(false) {}
+    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), Metrics_from_file (false), cum_VS_over(false), multiSNR(false), multiMean(false), multiSTD(false), snr_VS_wPats(false), mean_VS_wPats(false), std_VS_wPats(false), formatPNG(false), processRas(false), singleMeanAndSTD(false), multiMeanAndSTD(false), for_prints(false), for_meetings(false) {}
     bool master;
     bool pattern_graphs;
     bool snr_graphs;
@@ -118,6 +118,7 @@ struct what_to_plot
     bool singleMeanAndSTD;
     bool multiMeanAndSTD;
     bool for_prints;
+    bool for_meetings;
 };
 
 struct what_to_plot plot_this;
@@ -714,12 +715,27 @@ PlotSNRGraphs (std::multimap <double, struct SNR_data> snr_data)
     if (!plot_this.formatPNG)
     {
         gp << "set output \"SNR.svg\" \n";
-        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+        if(plot_this.for_meetings)
+        {
+            gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,30\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+        }
+        else
+        {
+            gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+        }
     }
     else
     {
         gp << "set output \"SNR.png\" \n";
-        gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+        if(plot_this.for_meetings)
+        {
+            gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,30\" size 2880,1440 ; \n";
+        }
+        else
+        {
+            gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+
+        }
     }
     gp << "set title \"SNR  vs  number of patterns - " << parameters.output_file << "\" \n";
 
@@ -756,12 +772,19 @@ PlotSNRGraphs (std::multimap <double, struct SNR_data> snr_data)
 
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
     gp << "set yrange[" << 0 << ":" << max_point << "]; \n";
-    gp << "set ylabel \"SNR\"; \n";
-    gp << "set xtics 1; \n";
-    gp << "set ytics 1; \n";
-    gp << "set grid; \n";
     gp << "set xlabel \"Number of patterns stored\"; \n";
-    gp << "plot '-' with lines title 'mean SNR' \n";
+    gp << "set ylabel \"SNR\"; \n";
+    if(!plot_this.for_meetings)
+    {
+        gp << "set xtics 1; \n";
+        gp << "set ytics 1; \n";
+        gp << "set grid; \n";
+        gp << "plot '-' with lines title 'mean SNR' \n";
+    }
+    else
+    {
+        gp << "plot '-' lw 3 with lines title 'mean SNR' \n";
+    }
     gp.send1d(points_means);
 
 
@@ -864,8 +887,16 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
     if (plot_this.formatPNG)
     {
         gp << "set output \"" << metric << ".png\" \n";
-        gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
-        gp << "set grid; \n";
+        if (plot_this.for_meetings)
+        {
+            gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,30\" size 2880,1440 ; \n";
+            gp << "set nogrid; \n";
+        }
+        else
+        {
+            gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+            gp << "set grid; \n";
+        }
     }
     else if(plot_this.for_prints)
     {
@@ -876,8 +907,16 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
     else
     {
         gp << "set output \"" << metric << ".svg\" \n";
-        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
-        gp << "set grid; \n";
+        if (plot_this.for_meetings)
+        {
+            gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,30\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+            gp << "set nogrid; \n";
+        }
+        else
+        {
+            gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+            gp << "set grid; \n";
+        }
     }
     gp << "set title \"" << metric << "  vs  number of patterns - " << parameters.output_file << "\" \n";
 
@@ -905,7 +944,7 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
     gp << "set xrange[" << 0 << ":" << parameters.num_pats + 1 << "]; \n";
     gp << "set yrange[:" << max_point << "]; \n";
     gp << "set ylabel \"" << metric << "\"; \n";
-    if(plot_this.for_prints)
+    if(plot_this.for_prints || plot_this.for_meetings)
     {
         int xvar = parameters.num_pats/4;
         gp << "set xtics nomirror " << xvar << "; \n";
@@ -918,7 +957,14 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
     }
 
     gp << "set xlabel \"Number of patterns stored\"; \n";
-    gp << "plot '-' with lines title 'mean " << metric << " - " << addendum.c_str() << "' lc " << lc << "; \n";
+    if (plot_this.for_meetings)
+    {
+        gp << "plot '-' with lines title 'mean " << metric << " - " << addendum.c_str() << "' lc " << lc << " lw 3" << "; \n";
+    }
+    else
+    {
+        gp << "plot '-' with lines title 'mean " << metric << " - " << addendum.c_str() << "' lc " << lc << "; \n";
+    }
     gp.send1d(points_means);
 
     return;
@@ -1001,8 +1047,16 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
     if (plot_this.formatPNG)
     {
         gp << "set output \"" << title << "-multi.png\" \n";
-        gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
-        gp << "set grid; \n";
+        if (plot_this.for_meetings)
+        {
+            gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,30\" size 2880,1440 ; \n";
+            gp << "set nogrid; \n";
+        }
+        else
+        {
+            gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 ; \n";
+            gp << "set grid; \n";
+        }
     }
     else if(plot_this.for_prints)
     {
@@ -1013,8 +1067,16 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
     else
     {
         gp << "set output \"" << title << "-multi.svg\" \n";
-        gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
-        gp << "set grid; \n";
+        if (plot_this.for_meetings)
+        {
+            gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,30\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+            gp << "set nogrid; \n";
+        }
+        else
+        {
+            gp << "set term svg font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 2880,1440 dynamic enhanced mousing standalone; \n";
+            gp << "set grid; \n";
+        }
     }
     gp << "set title \"" << title << "  vs  number of patterns - " << parameters.output_file << "\" \n";
     gp << "set ylabel \"" << title << "\"; \n";
@@ -1056,14 +1118,21 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
         }
         all_points_means.emplace_back(points_means);
         points_means.clear();
-        line_command << "'-' with lines title 'mean " << title << " - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
+        if(plot_this.for_meetings)
+        {
+            line_command << "'-' with lines title 'mean " << title << " - " << addendum.c_str() << "' lc " << lc << " lw 3, ";
+        }
+        else
+        {
+            line_command << "'-' with lines title 'mean " << title << " - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
+        }
         file_stream.close();
     }
 
 
     gp << "set xrange[" << 0.5 << ":" << parameters.num_pats + 1 << "]; \n";
     gp << "set yrange[:" << max_point << "]; \n";
-    if(plot_this.for_prints)
+    if(plot_this.for_prints || plot_this.for_meetings)
     {
         int xvar = parameters.num_pats/4;
         gp << "set xtics nomirror " << xvar << "; \n";
@@ -1408,12 +1477,20 @@ GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::st
         }
         all_points_means.emplace_back(points_means);
         points_means.clear();
-        line_command << "'-' using 1:2:3 with yerrorbars title 'std" <<  " - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
-        line_command << "'-' using 1:2:3 with lines title 'mean" << " - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
+        if (plot_this.for_meetings)
+        {
+            line_command << "'-' using 1:2:3 with yerrorbars title 'std" <<  " - " << addendum.c_str() << "' lc " << lc << " lw 3, ";
+            line_command << "'-' using 1:2:3 with lines title 'mean" << " - " << addendum.c_str() << "' lc " << lc << " lw 3, ";
+        }
+        else
+        {
+            line_command << "'-' using 1:2:3 with yerrorbars title 'std" <<  " - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
+            line_command << "'-' using 1:2:3 with lines title 'mean" << " - " << addendum.c_str() << "' lc " << lc << " lw 2, ";
+        }
         file_stream_mean.close();
     }
 
-    if(plot_this.for_prints)
+    if(plot_this.for_prints || plot_this.for_meetings)
     {
         int xvar = parameters.num_pats/4;
         gp << "set xtics nomirror " << xvar << "; \n";

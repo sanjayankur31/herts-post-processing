@@ -84,6 +84,7 @@ main ( int ac, char *av[] )
             ("singleMeanAndSTD,k","Generate a graph with mean and std from one set of data files 00-{Mean,STD}-data.txt")
             ("multiMeanAndSTD,K","Generate a graph with multiple mean and std plots")
             ("for-prints,f","Generate graphs for use in papers - this changes the tics and things so they're more visible when embedded in papers")
+            ("for-meetings,e","Generate graphs to show in meetings - this increases the font size and reduces ticks")
             ;
 
 
@@ -200,6 +201,10 @@ main ( int ac, char *av[] )
             {
                 plot_this.for_prints = true;
                 plot_this.formatPNG = false;
+            }
+            if (vm.count("for-meetings"))
+            {
+                plot_this.for_meetings = true;
             }
         }
 
