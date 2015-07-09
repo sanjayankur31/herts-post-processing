@@ -6,7 +6,7 @@
 #set output "adex.tex";
 
 set terminal png font "/usr/share/fonts/dejavu/DejaVuSans.ttf,30" size 3072,1024 linewidth 2;
-set output "adex.png"
+set output "tif.png"
 
 #set border 3;
 #unset border;

@@ -20,14 +20,14 @@
 #
 
 SOURCEDIR=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/src/
+SCRIPTDIR="$SOURCEDIR""postprocess/scripts/"
 
-#for e_reset in "70" "65" "60" "58"
-for e_reset in "75"
+for e_reset in "85" "80" "75" "70" "65" "60" "58"
 do
     mkdir "$e_reset""mV" -v
     cd "$e_reset""mV"
 
-    for current in "200" "300" "400" "500" "600" "700" "800" "900" "1000" "1100" "1200" "1300" "1400" "1500" "1600" "1700" "1800" "1900" "2000"
+    for current in "0" "50" "100" "150" "200" "300" "400" "500" "600" "700" "800" "900" "1000" "1100" "1200" "1300" "1400" "1500" "1600" "1700" "1800" "1900" "2000"
     do
         mkdir "$current""pA" -v
         cd "$current""pA"
@@ -46,4 +46,4 @@ done
 
 for i in *mV ; do cd "$i" ;  sed "s/pA//" firing-rates.txt > firing-rates-plot.txt; mv firing-rates-plot.txt ../"$i"-firing-rates.txt; cd ..;  done
 
-gnuplot ../../../src/postprocess/scripts/fi-graphs.plt
+gnuplot "$SCRIPTDIR""fi-graphs.plt"
