@@ -34,14 +34,20 @@ do
         cp "$configfile" ./"config.cfg" -v
         final_expr2="k_w_ee=""$k_w_ee"
         sed -i -e "s|k_w_ee=.*$|$final_expr2|" "config.cfg"
-        LD_LIBRARY_PATH=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/auryn/src/.libs mpiexec -n $mpi_ranks ~/bin/research-bin/vogels --out output --config "config.cfg"; 
+        LD_LIBRARY_PATH=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/auryn/src/.libs mpiexec -n $mpi_ranks ~/bin/research-bin/vogels --out k-ee-"$k_w_ee" --config "config.cfg"; 
 
         sort --parallel=20 -g -m *_e.ras > "spikes-e.ras"
         awk '/^5\./,/^14\./' spikes-e.ras | wc -l | tr -d '\n' > spikes-in-10-e.txt; echo "/(10*$NE)" >> spikes-in-10-e.txt ; cat spikes-in-10-e.txt | bc -l > firing-rate-e.txt; 
 
         sort --parallel=20 -g -m *_i.ras > "spikes-i.ras"
         awk '/^5\./,/^14\./' spikes-i.ras | wc -l | tr -d '\n' > spikes-in-10-i.txt; echo "/(10*$NI)" >> spikes-in-10-i.txt ; cat spikes-in-10-i.txt | bc -l > firing-rate-i.txt; 
+
+        rm *.ras -f
+
     cd ..
+    ~/bin/research-scripts/postprocess-mpich.sh -d k-ee-"$k_w_ee" -o
+    rm k-ee-"$k_w_ee"/*.rate* k-ee-"$k_w_ee"/*.weight* k-ee-"$k_w_ee"/*log -f
+
 done
 for i in k-ee-*; do echo -n "$i " ; cat "$i"/firing-rate-e.txt; done | sort -n > firing-rates-e.txt
 for i in k-ee-*; do echo -n "$i " ; cat "$i"/firing-rate-i.txt; done | sort -n > firing-rates-i.txt
