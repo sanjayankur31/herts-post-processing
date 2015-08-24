@@ -4,7 +4,7 @@ set output "AdEx-ab0-F-w_ee.png";
 #set output "AdEx-ab0-F-w_ee.tex";
 
 set border 3;
-set xlabel 'k\_w\_ee (w\_ee = k\_w\_ee * 10ns)';
+set xlabel 'k\_w\_ee (w\_ee = k\_w\_ee * 3nS)';
 set ylabel "Firing rate in (Hz)";
 #set xrange [0:2100];
 #set xtics nomirror 0,200,2500
@@ -20,7 +20,7 @@ set output "AdEx-ab0-F-w_ee-e.png";
 #set output "AdEx-ab0-F-w_ee.tex";
 
 set border 3;
-set xlabel 'k\_w\_ee (w\_ee = k\_w\_ee * 10ns)';
+set xlabel 'k\_w\_ee (w\_ee = k\_w\_ee * 3nS)';
 set ylabel "Firing rate in (Hz)";
 #set xrange [0:2100];
 #set xtics nomirror 0,200,2500
@@ -36,7 +36,7 @@ set output "AdEx-ab0-F-w_ee-i.png";
 #set output "AdEx-ab0-F-w_ee.tex";
 
 set border 3;
-set xlabel 'k\_w\_ee (w\_ee = k\_w\_ee * 10ns)';
+set xlabel 'k\_w\_ee (w\_ee = k\_w\_ee * 3nS)';
 set ylabel "Firing rate in (Hz)";
 #set xrange [0:2100];
 #set xtics nomirror 0,200,2500

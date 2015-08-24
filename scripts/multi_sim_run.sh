@@ -28,6 +28,7 @@ do
     popd
     # make sure the configuration file is up to date
     ~/bin/research-scripts/run_vogels_mpich.sh
+    ~/bin/research-scripts/postprocess-mpich.sh -d `tmux show-buffer` -o
     pushd `tmux show-buffer`
         ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S -s && rm *.ras *.netstate *.weightinfo *.rate *.log -f
     popd
