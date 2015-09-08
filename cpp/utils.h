@@ -492,32 +492,25 @@ ExtractChunk (char * chunk_start, char * chunk_end )
     void
 PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, double chunk_time, std::string colour, std::string legendLabel)
 {
-#if  0     /* ----- #if 0 : If0Label_1 ----- */
     std::vector<std::pair<unsigned int, unsigned int> > plot_hack;
-
     sort(values.begin(), values.end());
 
-    for (std::vector<unsigned int>::iterator it = values.begin(); it != values.end(); it++)
-        plot_hack.emplace_back(std::pair<unsigned int, unsigned int>(*it, *it));
+    double binwidth = (values.back() - values.front());
+    std::cout << "bindwidth is " << binwidth << std::endl;
+    binwidth /= values.size();
+    std::cout << "bindwidth after division is " << binwidth << std::endl;
 
-
-    double binwidth = (values.back() - values.front())/values.size();
     Gnuplot gp;
     gp << "set style fill solid 0.5; set tics out nomirror; \n"; 
-/*     gp << "set xrange [" << values.front() << ":" << values.back() << "];\n";
- */
-    gp << "set xrange [0:];\n";
-    gp << "set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; \n";
+    gp << "set xlabel \"firing rate\"; set ylabel \"number of neurons\"; \n";
     gp << "binwidth=" << binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
-    gp << "set output \"" << outputFileName << "\n";
+    gp << "set output \"" << outputFileName << "\"; \n";
     gp << "set title \"Histogram of firing rates at time " << chunk_time << "\"; \n";
-    gp << "plot '-' using (bin($1,binwidth)):(1.0) smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\"; \n";
-    gp.send1d(plot_hack);
+    gp << "plot '-'  using (bin($1,binwidth)):(1.0) smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\" ; \n";
+    gp.send1d(boost::make_tuple(values, values));
 
-    std::cout << outputFileName << "plotted." << "\n";
-#endif     /* ----- #if 0 : If0Label_1 ----- */
-
+    std::cout << outputFileName << " plotted." << "\n";
 
 }		/* -----  end of function PlotHistogram  ----- */
 
@@ -673,6 +666,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     converter << parameters.output_file << "-" << chunk_time << ".i.histogram.png"; 
     PlotHistogram(neuronsI_rate, converter.str(), chunk_time, "red", "Inhibitory");
 
+
     if (plot_this.pattern_graphs)
     {
         converter.str("");
@@ -684,6 +678,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
         converter << parameters.output_file << "-" << chunk_time << ".noise." << patternRecalled << ".histogram.png"; 
         PlotHistogram(noise_neurons_rate, converter.str(), chunk_time, "black", "Noise");
     }
+
 
 
     snr_at_chunk_time = GetSNR(pattern_neurons_rate, noise_neurons_rate);
