@@ -5,8 +5,8 @@
 #set terminal epslatex size 2.5,2.5 color colortext
 #set output "adex.tex";
 
-set terminal png font "/usr/share/fonts/dejavu/DejaVuSans.ttf,30" size 3072,1024 linewidth 2;
-set output "tif.png"
+set terminal png font "/usr/share/fonts/dejavu/DejaVuSans.ttf,30" size 5048,1024 linewidth 2;
+set output "Adex.png"
 
 #set border 3;
 #unset border;
@@ -14,7 +14,7 @@ set output "tif.png"
 #unset ytics
 #set xtics nomirror ('\(0\)' 0, '\(200\)' 0.2);
 #set ytics nomirror ('\(-70\)' -0.07, '\(0\)' 0, '\(20\)' 0.02);
-set yrange [-0.07:0.03]
+#set yrange [-0.09:0.03]
 #set xrange [0:0.20]
 #set lmargin 3
 #set bmargin 2
@@ -35,4 +35,4 @@ set xrange [5:5.10]
 
 set xlabel "Time in s"
 set ylabel "Membrane voltage in volts"
-plot "voltages-1000.txt" title "" with lines lc 1 lw 2;
+plot "voltages-1000.txt" title "" with lines lc 1 lw 1;
