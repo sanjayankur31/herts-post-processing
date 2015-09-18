@@ -496,9 +496,7 @@ PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, dou
     sort(values.begin(), values.end());
 
     double binwidth = (values.back() - values.front());
-    std::cout << "bindwidth is " << binwidth << std::endl;
     binwidth /= values.size();
-    std::cout << "bindwidth after division is " << binwidth << std::endl;
 
     Gnuplot gp;
     gp << "set style fill solid 0.5; set tics out nomirror; \n"; 
