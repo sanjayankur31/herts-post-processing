@@ -1,13 +1,13 @@
-#set terminal pngcairo size 1536,768;
-#set output "AdEx-ab0-FI.png";
-set terminal epslatex size 5,2.5 color colortext
-set output "AdEx-ab0-FI.tex";
+set terminal pngcairo size 1536,768;
+set output "AdEx-ab0-FI.png";
+#set terminal epslatex size 5,2.5 color colortext
+#set output "AdEx-ab0-FI.tex";
 
 set border 3;
 set xlabel "Input current (pA)";
 set ylabel "Firing rate in (Hz)";
-set xrange [0:2100];
-set xtics nomirror 0,200,2500
+set xrange [0:];
+set xtics nomirror 0,2000
 set ytics nomirror
 set key left
 #set title "F-I curve for AdEx with ab=0 and different reset voltages"

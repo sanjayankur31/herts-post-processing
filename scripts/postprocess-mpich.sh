@@ -130,7 +130,7 @@ function run ()
 #            if [[ ! -e "RAS-COMBINED" ]]
                 echo "******* Passing on information to postprocess"
                 echo "******* Running: postprocess -o $timestamp"
-                ~/bin/research-bin/postprocess "-o" "$timestamp"
+                ~/bin/research-bin/postprocess "-o" "$timestamp" -c *.cfg
                 echo
                 touch RAS-COMBINED
 #            else
@@ -208,7 +208,7 @@ function run ()
         (
         if [ "$patterngraphs" == "yes" ]
         then
-            numpats=$(grep num_pats simulation_config.cfg | sed "s/.*=//")
+            numpats=$(grep num_pats *.cfg | sed "s/.*=//")
             numcols=$(round "sqrt($numpats)" 0)
             numrows=$(round "sqrt($numpats) + 1" 0)
 
@@ -225,7 +225,7 @@ function run ()
         if [ "$snrgraphs" == "yes" ] && [ "$collectsnrdata" == "yes" ]
         then
             echo "**** Processing SNR information ****"
-            numpats=$(grep num_pats simulation_config.cfg | sed "s/.*=//")
+            numpats=$(grep num_pats *.cfg | sed "s/.*=//")
             collatesnrdata
             generatesnrgraphs
             echo "**** Processed SNR information ****"
@@ -233,7 +233,7 @@ function run ()
         if [ "$snrgraphs" == "yes" ] && [ "$collectsnrdata" == "no" ]
         then
             echo "**** Processing SNR information ****"
-            numpats=$(grep num_pats simulation_config.cfg | sed "s/.*=//")
+            numpats=$(grep num_pats *.cfg | sed "s/.*=//")
             generatesnrgraphs
             echo "**** Processed SNR information ****"
         fi
@@ -437,35 +437,6 @@ function generatepatterngraphs ()
     gnuplot -e "$gnuplotcommand" &
     echo "*********** Patterns at time $timeofpattern generated *****************"
 
-    gnuplotcommand5="set style fill solid 0.5; set tics out nomirror; set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set xtics rotate; set output \"""$timeofpattern"".patterns-histograms.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
-
-    for i in `seq 1 $numpats`;
-    do
-        patternfilename5="$timeofpattern""-""$(printf %08d $i)"".pattern.rate.multiline"
-        minPatternRate=$(sort -g "$patternfilename5" | head -1)
-        maxPatternRate=$(sort -g "$patternfilename5" | tail -1)
-        uniqValsPattern=$(uniq "$patternfilename5" | wc -l)
-        binwidthPattern=$(echo "($maxPatternRate-$minPatternRate)/$uniqValsPattern" | bc -l)
-        gnuplotcommand5+="set xrange [""$minPatternRate"":""$maxPatternRate""]; set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; binwidth=""$binwidthPattern""; bin(x,width)=width*floor(x/width)+width/2.0; plot \"""$patternfilename5""\" using (bin(\$1,binwidth)):(1.0) smooth freq with boxes lc rgb \"blue\" t \"""$i""\"; "
-    done
-    gnuplotcommand5+="unset multiplot;"
-    #gnuplot -e "$gnuplotcommand5" &
-    echo "*********** Pattern histograms at time $timeofpattern generated *****************"
-
-    gnuplotcommand6="set style fill solid 0.5; set tics out nomirror; set nokey; set view map; set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,15\" size 1440,1440; set xtics rotate; set output \"""$timeofpattern"".noises-histograms.png\"; set multiplot layout ""$numrows"",""$numcols"" title \"Time ""$timeofpattern""\"; "
-
-    for i in `seq 1 $numpats`;
-    do
-        noisefilename="$timeofpattern""-""$(printf %08d $i)"".noise.rate.multiline"
-        minNoiseRate=$(sort -g "$noisefilename" | head -1)
-        maxNoiseRate=$(sort -g "$noisefilename" | tail -1)
-        uniqValsNoise=$(uniq "$noisefilename" | wc -l)
-        binwidthNoise=$(echo "($maxNoiseRate-$minNoiseRate)/$uniqValsNoise" | bc -l)
-        gnuplotcommand6+="set xrange [""$minNoiseRate"":""$maxNoiseRate""]; set yrange [0:]; set xlabel \"firing rate\"; set ylabel \"number of neurons\"; binwidth=""$binwidthNoise""; bin(x,width)=width*floor(x/width)+width/2.0; plot \"""$noisefilename""\" using (bin(\$1,binwidth)):(1.0) smooth freq with boxes lc rgb \"red\" t \"""$i""\"; "
-    done
-    gnuplotcommand6+="unset multiplot;"
-    #gnuplot -e "$gnuplotcommand6" &
-    echo "*********** Noise histograms at time $timeofpattern generated *****************"
 }
 
 function generatesnrgraphs ()
