@@ -43,7 +43,7 @@ main ( int ac, char *av[] )
     clock_t clock_start, clock_end;
     std::vector<std::vector<unsigned int> > patterns;
     std::vector<std::vector<unsigned int> > recalls;
-    std::vector<double> graphing_times;
+    std::vector<AurynTime> graphing_times;
     std::multimap <double, struct SNR_data> snr_data;
     unsigned int threads_max = 0;
     unsigned int task_counter = 0;
@@ -253,7 +253,7 @@ main ( int ac, char *av[] )
             std::cerr << "Graphing times were not generated. Exiting program." << "\n";
             return -1;
         }
-        for (std::vector<double>::iterator it = graphing_times.begin(); it != graphing_times.end(); it++)
+        for (std::vector<AurynTime>::iterator it = graphing_times.begin(); it != graphing_times.end(); it++)
             std::cout << *it << "\t";
         std::cout << "\n";
 
@@ -266,13 +266,13 @@ main ( int ac, char *av[] )
         {
             converter.str("");
             converter.clear();
-            converter << parameters.output_file << "." << i << "_e.ras";
+            converter << parameters.output_file << "." << i << "_e.bras";
             spikes_E.emplace_back(boost::iostreams::mapped_file_source());
             spikes_E[i].open(converter.str());
 
             converter.str("");
             converter.clear();
-            converter << parameters.output_file << "." << i << "_i.ras";
+            converter << parameters.output_file << "." << i << "_i.bras";
             spikes_I.emplace_back(boost::iostreams::mapped_file_source());
             spikes_I[i].open(converter.str());
         }
@@ -306,7 +306,7 @@ main ( int ac, char *av[] )
                 }
                 /*  Now we can get back to running new threads */
 
-                threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + 1,  j, std::ref(snr_data)));
+                threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + (1.0/dt),  j, std::ref(snr_data)));
                 task_counter++;
             }
         }

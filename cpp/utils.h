@@ -37,6 +37,7 @@
 #include <cmath>
 #include "gnuplot-iostream/gnuplot-iostream.h"
 #include <mutex>
+#include "auryn_definitions.h"
 
 
 /*-----------------------------------------------------------------------------
@@ -44,13 +45,6 @@
  *-----------------------------------------------------------------------------*/
 
 namespace po = boost::program_options;
-
-/*  Make sure this matches in auryn, or you break down */
-struct spikeEvent_type
-{
-    double time;
-    unsigned int neuronID;
-};
 
 struct SNR_data
 {
@@ -219,10 +213,10 @@ LoadPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std:
  *      - NONE
  * =====================================================================================
  */
-std::vector<double>
+std::vector<AurynTime>
 CalculateTimeToPlotList ()
 {
-    std::vector<double> graphing_times;
+    std::vector<AurynTime> graphing_times;
     double times = 0;
 
     /*  Initial stimulus and stabilisation */
@@ -247,7 +241,7 @@ CalculateTimeToPlotList ()
 
 /*
  * ===  FUNCTION  ======================================================================
- *         Name:  CalculateTimeToPlotList
+ *         Name:  ReadTimeToPlotListFromFile
  *  Description:  A different implementation where I just read them from a file
  *
  *  Returns: a vector with the times that were read from the file
@@ -255,10 +249,10 @@ CalculateTimeToPlotList ()
  *      - NONE
  * =====================================================================================
  */
-std::vector<double>
+std::vector<AurynTime>
 ReadTimeToPlotListFromFile ()
 {
-    std::vector<double> graphing_times;
+    std::vector<AurynTime> graphing_times;
     double temp;
     std::ifstream timefilestream;
     timefilestream.open(parameters.plot_times_file);
@@ -281,7 +275,7 @@ ReadTimeToPlotListFromFile ()
     std::sort(graphing_times.begin(), graphing_times.end());
 
     return graphing_times;
-}		/* -----  end of function CalculateTimeToPlotList  ----- */
+}		/* -----  end of function ReadTimeToPlotListFromFile  ----- */
 
 
 /*
@@ -311,19 +305,21 @@ PlotMasterGraph ( )
 BinaryUpperBound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
     char *spikesStart = NULL;
-    unsigned long int numStart = 0;
+    /*  Needs to be 1 because we now have an extra header data struct right at
+     *  the beginning */
+    unsigned long int numStart = 1;
     unsigned long int numEnd = 0;
     char *currentSpike = NULL;
     unsigned long int numCurrent = 0;
     unsigned long int numdiff = 0;
     unsigned long int step = 0;
-    unsigned long int sizeofstruct = sizeof(struct spikeEvent_type);
-    struct spikeEvent_type *currentRecord = NULL;
+    unsigned long int sizeofstruct = sizeof(struct SpikeEvent_type);
+    struct SpikeEvent_type *currentRecord = NULL;
 
 
     /*  start of last record */
     spikesStart =  (char *)openMapSource.data();
-    numStart = 0;
+    numStart = 1;
     /*  end of last record */
     numEnd = (openMapSource.size()/sizeofstruct -1);
 
@@ -356,7 +352,7 @@ BinaryUpperBound (double timeToCompare, boost::iostreams::mapped_file_source &op
 
         numCurrent += step;
         currentSpike = spikesStart + numCurrent * sizeofstruct;
-        currentRecord = (struct spikeEvent_type *)currentSpike;
+        currentRecord = (struct SpikeEvent_type *)currentSpike;
 #ifdef DEBUG
         std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at line" << numCurrent << "\n";
 #endif
@@ -371,7 +367,7 @@ BinaryUpperBound (double timeToCompare, boost::iostreams::mapped_file_source &op
     }
 
     currentSpike = spikesStart + (numStart * sizeofstruct);
-    currentRecord = (struct spikeEvent_type *)currentSpike;
+    currentRecord = (struct SpikeEvent_type *)currentSpike;
 #ifdef DEBUG
     std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
 #endif
@@ -389,19 +385,21 @@ BinaryUpperBound (double timeToCompare, boost::iostreams::mapped_file_source &op
 BinaryLowerBound (double timeToCompare, boost::iostreams::mapped_file_source &openMapSource )
 {
     char *spikesStart = NULL;
-    unsigned long int numStart = 0;
+    /*  Needs to be 1 because we now have an extra header data struct right at
+     *  the beginning */
+    unsigned long int numStart = 1;
     unsigned long int numEnd = 0;
     char *currentSpike = NULL;
     unsigned long int numCurrent = 0;
     unsigned long int numdiff = 0;
     unsigned long int step = 0;
-    unsigned long int sizeofstruct = sizeof(struct spikeEvent_type);
-    struct spikeEvent_type *currentRecord = NULL;
+    unsigned long int sizeofstruct = sizeof(struct SpikeEvent_type);
+    struct SpikeEvent_type *currentRecord = NULL;
 
 
     /*  start of last record */
     spikesStart =  (char *)openMapSource.data();
-    numStart = 0;
+    numStart = 1;
     /*  end of last record */
     numEnd = (openMapSource.size()/sizeofstruct -1);
 
@@ -434,7 +432,7 @@ BinaryLowerBound (double timeToCompare, boost::iostreams::mapped_file_source &op
 
         numCurrent += step;
         currentSpike = spikesStart + numCurrent * sizeofstruct;
-        currentRecord = (struct spikeEvent_type *)currentSpike;
+        currentRecord = (struct SpikeEvent_type *)currentSpike;
 #ifdef DEBUG
         std::cout << "Current record is: " << currentRecord->time << "\t" << currentRecord->neuronID << " at line" << numCurrent << "\n";
 #endif
@@ -449,7 +447,7 @@ BinaryLowerBound (double timeToCompare, boost::iostreams::mapped_file_source &op
     }
 
     currentSpike = spikesStart + (numStart * sizeofstruct);
-    currentRecord = (struct spikeEvent_type *)currentSpike;
+    currentRecord = (struct SpikeEvent_type *)currentSpike;
 #ifdef DEBUG
     std::cout << "Returning: " << currentRecord->time << "\t" << currentRecord->neuronID << "\n";
 #endif
@@ -473,10 +471,10 @@ ExtractChunk (char * chunk_start, char * chunk_end )
         chunkit = chunk_start;
         while (chunkit <= chunk_end)
         {
-            struct spikeEvent_type *buffer;
-            buffer = (struct spikeEvent_type *)chunkit;
+            struct SpikeEvent_type *buffer;
+            buffer = (struct SpikeEvent_type *)chunkit;
             neurons.emplace_back(buffer->neuronID);
-            chunkit += sizeof(struct spikeEvent_type);
+            chunkit += sizeof(struct SpikeEvent_type);
         }
     }
     return neurons;
@@ -490,7 +488,7 @@ ExtractChunk (char * chunk_start, char * chunk_end )
  * =====================================================================================
  */
     void
-PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, double chunk_time, std::string colour, std::string legendLabel)
+PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, AurynTime chunk_time, std::string colour, std::string legendLabel)
 {
     std::vector<std::pair<unsigned int, unsigned int> > plot_hack;
     sort(values.begin(), values.end());
@@ -557,7 +555,7 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
  * =====================================================================================
  */
     void
-MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, double chunk_time, unsigned int patternRecalled, std::multimap <double, struct SNR_data> &snr_data)
+MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, AurynTime chunk_time, unsigned int patternRecalled, std::multimap <double, struct SNR_data> &snr_data)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
@@ -578,7 +576,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
     {
         /*  Excitatory */
-        char * chunk_start = BinaryLowerBound(chunk_time - 1., std::ref(spikes_E[i]));
+        char * chunk_start = BinaryLowerBound(chunk_time - (1.0/dt), std::ref(spikes_E[i]));
         char * chunk_end = BinaryUpperBound(chunk_time, std::ref(spikes_E[i]));
         std::vector<unsigned int> temp = ExtractChunk(chunk_start, chunk_end);
         neuronsE.reserve(neuronsE.size() + std::distance (temp.begin(), temp.end()));
@@ -590,7 +588,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
         }
 
         /*  Inhibitory */
-        chunk_start = BinaryLowerBound(chunk_time - 1., std::ref(spikes_I[i]));
+        chunk_start = BinaryLowerBound(chunk_time - (1.0/dt), std::ref(spikes_I[i]));
         chunk_end = BinaryUpperBound(chunk_time, std::ref(spikes_I[i]));
         temp = ExtractChunk(chunk_start, chunk_end);
         neuronsI.reserve(neuronsI.size() + std::distance (temp.begin(), temp.end()));
@@ -657,32 +655,32 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
 
     converter.str("");
     converter.clear();
-    converter << parameters.output_file << "-" << chunk_time << ".e.histogram.png"; 
-    PlotHistogram(neuronsE_rate, converter.str(), chunk_time, "blue", "Excitatory");
+    converter << parameters.output_file << "-" << chunk_time*dt << ".e.histogram.png"; 
+    PlotHistogram(neuronsE_rate, converter.str(), chunk_time*dt, "blue", "Excitatory");
     converter.str("");
     converter.clear();
-    converter << parameters.output_file << "-" << chunk_time << ".i.histogram.png"; 
-    PlotHistogram(neuronsI_rate, converter.str(), chunk_time, "red", "Inhibitory");
+    converter << parameters.output_file << "-" << chunk_time*dt << ".i.histogram.png"; 
+    PlotHistogram(neuronsI_rate, converter.str(), chunk_time*dt, "red", "Inhibitory");
 
 
     if (plot_this.pattern_graphs)
     {
         converter.str("");
         converter.clear();
-        converter << parameters.output_file << "-" << chunk_time << ".pattern." << patternRecalled << ".histogram.png";
-        PlotHistogram(pattern_neurons_rate, converter.str(), chunk_time, "green" , "Pattern");
+        converter << parameters.output_file << "-" << chunk_time*dt << ".pattern." << patternRecalled << ".histogram.png";
+        PlotHistogram(pattern_neurons_rate, converter.str(), chunk_time*dt, "green" , "Pattern");
         converter.str("");
         converter.clear();
-        converter << parameters.output_file << "-" << chunk_time << ".noise." << patternRecalled << ".histogram.png"; 
-        PlotHistogram(noise_neurons_rate, converter.str(), chunk_time, "black", "Noise");
+        converter << parameters.output_file << "-" << chunk_time*dt << ".noise." << patternRecalled << ".histogram.png"; 
+        PlotHistogram(noise_neurons_rate, converter.str(), chunk_time*dt, "black", "Noise");
     }
 
 
 
     snr_at_chunk_time = GetSNR(pattern_neurons_rate, noise_neurons_rate);
-    std::cout << "SNR at time " << chunk_time << " is " << snr_at_chunk_time.SNR << "\n";
+    std::cout << "SNR at time " << chunk_time*dt << " is " << snr_at_chunk_time.SNR << "\n";
     std::lock_guard<std::mutex> guard(snr_data_mutex);
-    snr_data.insert(std::pair<double, struct SNR_data>(chunk_time, snr_at_chunk_time));
+    snr_data.insert(std::pair<double, struct SNR_data>((chunk_time*dt), snr_at_chunk_time));
     std::cout << "SNR complete size " << " is " << snr_data.size() << "\n";
 
 

@@ -2,8 +2,9 @@
 CC = g++
 
 
-	LDFLAGS=-lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lpthread
-	CXXFLAGS= -g -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -m64 -mtune=generic -std=c++11 -O3 -ffast-math -pedantic -I/usr/include
+	LDFLAGS=-lboost_program_options -lboost_filesystem -lboost_system -lboost_iostreams -lpthread  -L/usr/lib64/mpich/lib/ -L../../../auryn/build/src -lauryn
+	CXXFLAGS= -g -pipe -Wall -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -m64 -mtune=generic -std=c++11 -O3 -ffast-math -pedantic -I/usr/include -I../../../auryn/src/ -I/usr/include/mpich-x86_64
+
 
 all: postprocess
 
