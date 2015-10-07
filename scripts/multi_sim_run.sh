@@ -30,7 +30,7 @@ do
     ~/bin/research-scripts/run_vogels_mpich.sh
     ~/bin/research-scripts/postprocess-mpich.sh -d `tmux show-buffer` -o
     pushd `tmux show-buffer`
-        ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S -s -e && rm *.ras *.netstate *.weightinfo *.rate *.log *merge* -f
+        ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S -s -e --pattern && rm *.ras *.netstate *.weightinfo *.rate *.log *merge* *bras -f
     popd
     echo `tmux show-buffer` >> dirs-created.txt
     rm -rf ~/dump/patternFilesTemp/ && sleep 1
