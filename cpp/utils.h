@@ -153,23 +153,18 @@ LoadPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std:
         std::string pattern = converter.str();
         patterns.emplace_back(std::vector<unsigned int> ());
 
-        try
+        ifs.open(pattern);
+        if (ifs.is_open())
         {
-            ifs.open(pattern);
-
             while(ifs >> neuronID)
                 patterns[i].emplace_back(neuronID);
 
-            ifs.close();
             std::sort(patterns[i].begin(), patterns[i].end());
 #if  DEBUG_ENABLED
             std::cout << "Items loaded and sorted in pattern number " << i << " is " << patterns[i].size() << "\n";
 #endif     /* -----  DEBUG_ENABLED  ----- */
         }
-        catch (std::ios_base::failure &e)
-        {
-            std::cerr << e.what() << "\n";
-        }
+        ifs.close();
 
         converter.str("");
         converter.clear();
@@ -177,23 +172,19 @@ LoadPatternsAndRecalls ( std::vector<std::vector<unsigned int> > &patterns, std:
         std::string recall = converter.str();
         recalls.emplace_back(std::vector<unsigned int> ());
 
-        try
-        {
-            ifs.open(recall);
+        ifs.open(recall);
 
+        if (ifs.is_open())
+        {
             while(ifs >> neuronID)
                 recalls[i].emplace_back(neuronID);
 
-            ifs.close();
             std::sort(recalls[i].begin(), recalls[i].end());
 #if  DEBUG_ENABLED
             std::cout << "Items loaded and sorted in recall number " << i << " is " << recalls[i].size() << "\n";
 #endif     /* -----  DEBUG_ENABLED  ----- */
         }
-        catch (std::ios_base::failure &e)
-        {
-            std::cerr << e.what() << "\n";
-        }
+        ifs.close();
     }
 #if  DEBUG_ENABLED
     clock_end = clock();
@@ -480,6 +471,44 @@ ExtractChunk (char * chunk_start, char * chunk_end )
     return neurons;
 }		/* -----  end of function ExtractChunk  ----- */
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  PlotDualHistogram
+ *  Description:  Two histograms together, like E and I, noise and background
+ *  and so on
+ * =====================================================================================
+ */
+    void
+PlotDualHistogram (std::vector<unsigned int> values, std::vector<unsigned int> values1, std::string outputFileName, AurynTime chunk_time, std::string colour1, std::string legendLabel1, std::string colour2, std::string legendLabel2, std::string xlabel, std::string ylabel, float normalise1 = 1.0, float normalise2 = 1.0)
+{
+    std::vector<std::pair<unsigned int, unsigned int> > plot_hack;
+    sort(values.begin(), values.end());
+    sort(values1.begin(), values1.end());
+
+    double binwidth = (values.back() - values.front());
+    double binwidth1 = (values1.back() - values1.front());
+
+    binwidth /= values.size();
+    binwidth1 /= values1.size();
+
+    double graph_binwidth = (binwidth < binwidth1)? binwidth : binwidth1;
+
+    Gnuplot gp;
+    gp << "set style fill solid 0.5; set tics out nomirror; \n"; 
+    gp << "set xrange [0:]; \n";
+    gp << "set xlabel \"" << xlabel << "\"; set ylabel \"" << ylabel << "\"; \n";
+    gp << "binwidth=" << graph_binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
+    gp << "set output \"" << outputFileName << "\"; \n";
+    gp << "set title \"Histogram of firing rates at time " << chunk_time << "\"; \n";
+    gp << "plot '-'  using (bin($1,binwidth)):(" << normalise1 << ") smooth freq with boxes lc rgb \"" << colour1 << "\" t \"" << legendLabel1 << "\" ,";
+    gp << "'-'  using (bin($1,binwidth)):(" << normalise2 << ") smooth freq with boxes lc rgb \"" << colour2 << "\" t \"" << legendLabel2 << "\" ; \n";
+    gp.send1d(boost::make_tuple(values, values));
+    gp.send1d(boost::make_tuple(values1, values1));
+
+    std::cout << outputFileName << " plotted." << "\n";
+
+}		/* -----  end of function PlotDualHistogram  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -498,6 +527,7 @@ PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, Aur
 
     Gnuplot gp;
     gp << "set style fill solid 0.5; set tics out nomirror; \n"; 
+    gp << "set xrange [0:]; \n";
     gp << "set xlabel \"firing rate\"; set ylabel \"number of neurons\"; \n";
     gp << "binwidth=" << binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
@@ -655,24 +685,16 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
 
     converter.str("");
     converter.clear();
-    converter << parameters.output_file << "-" << chunk_time*dt << ".e.histogram.png"; 
-    PlotHistogram(neuronsE_rate, converter.str(), chunk_time*dt, "blue", "Excitatory");
-    converter.str("");
-    converter.clear();
-    converter << parameters.output_file << "-" << chunk_time*dt << ".i.histogram.png"; 
-    PlotHistogram(neuronsI_rate, converter.str(), chunk_time*dt, "red", "Inhibitory");
+    converter << parameters.output_file << "-" << chunk_time*dt << ".e.i.histogram.png"; 
 
+    PlotDualHistogram(neuronsE_rate, neuronsI_rate, converter.str(), chunk_time*dt, "blue", "Excitatory", "red", "Inhibitory", "firing rate", "percentage of neurons", 1./8000., 1./2000.);
 
     if (plot_this.pattern_graphs)
     {
         converter.str("");
         converter.clear();
-        converter << parameters.output_file << "-" << chunk_time*dt << ".pattern." << patternRecalled << ".histogram.png";
-        PlotHistogram(pattern_neurons_rate, converter.str(), chunk_time*dt, "green" , "Pattern");
-        converter.str("");
-        converter.clear();
-        converter << parameters.output_file << "-" << chunk_time*dt << ".noise." << patternRecalled << ".histogram.png"; 
-        PlotHistogram(noise_neurons_rate, converter.str(), chunk_time*dt, "black", "Noise");
+        converter << parameters.output_file << "-" << chunk_time*dt << ".pattern.noise." << patternRecalled << ".histogram.png";
+        PlotDualHistogram(pattern_neurons_rate, noise_neurons_rate, converter.str(), chunk_time*dt, "green" , "Pattern", "black", "Noise", "firing rate", "percentage of neurons" , 1./800., 1./7200. );
     }
 
 
