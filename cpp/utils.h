@@ -687,14 +687,14 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     converter.clear();
     converter << parameters.output_file << "-" << chunk_time*dt << ".e.i.histogram.png"; 
 
-    PlotDualHistogram(neuronsE_rate, neuronsI_rate, converter.str(), chunk_time*dt, "blue", "Excitatory", "red", "Inhibitory", "firing rate", "percentage of neurons", 1./8000., 1./2000.);
+    PlotDualHistogram(neuronsE_rate, neuronsI_rate, converter.str(), chunk_time*dt, "blue", "Excitatory", "red", "Inhibitory", "firing rate", "ratio of neurons", 1./8000., 1./2000.);
 
     if (plot_this.pattern_graphs)
     {
         converter.str("");
         converter.clear();
         converter << parameters.output_file << "-" << chunk_time*dt << ".pattern.noise." << patternRecalled << ".histogram.png";
-        PlotDualHistogram(pattern_neurons_rate, noise_neurons_rate, converter.str(), chunk_time*dt, "green" , "Pattern", "black", "Noise", "firing rate", "percentage of neurons" , 1./800., 1./7200. );
+        PlotDualHistogram(pattern_neurons_rate, noise_neurons_rate, converter.str(), chunk_time*dt, "green" , "Pattern", "black", "Noise", "firing rate", "ratio of neurons" , 1./800., 1./7200. );
     }
 
 
