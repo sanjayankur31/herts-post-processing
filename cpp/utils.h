@@ -38,6 +38,7 @@
 #include "gnuplot-iostream/gnuplot-iostream.h"
 #include <mutex>
 #include "auryn_definitions.h"
+#include <unordered_map>
 
 
 /*-----------------------------------------------------------------------------
@@ -481,7 +482,6 @@ ExtractChunk (char * chunk_start, char * chunk_end )
     void
 PlotDualHistogram (std::vector<unsigned int> values, std::vector<unsigned int> values1, std::string outputFileName, AurynTime chunk_time, std::string colour1, std::string legendLabel1, std::string colour2, std::string legendLabel2, std::string xlabel, std::string ylabel, float normalise1 = 1.0, float normalise2 = 1.0)
 {
-    std::vector<std::pair<unsigned int, unsigned int> > plot_hack;
     sort(values.begin(), values.end());
     sort(values1.begin(), values1.end());
 
@@ -510,6 +510,75 @@ PlotDualHistogram (std::vector<unsigned int> values, std::vector<unsigned int> v
 
 }		/* -----  end of function PlotDualHistogram  ----- */
 
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  PlotConnectionsAndRates
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+PlotConnectionsAndRates ( std::vector<unsigned int>rates, std::vector<unsigned int>connections_e, std::vector<unsigned int> connections_i, std::string outputFilePrefix, unsigned int chunk_time )
+{
+    std::vector<unsigned int>neuron_numbers;
+    std::vector<int>negative_connections_i;
+
+    for (std::vector<unsigned int>::iterator it = connections_i.begin(); it!= connections_i.end(); it++)
+    {
+        negative_connections_i.emplace_back((*it) * -1);
+    }
+
+    for(int i = 1; i < 801; i++)
+        neuron_numbers.emplace_back(i);
+
+    Gnuplot gp;
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
+    gp << "set xrange [0:800]; \n";
+    gp << "set xlabel \"pattern neurons\"; set ylabel \"Connections\"; \n";
+    gp << "set output \"" << outputFilePrefix << ".connections.png\"; \n";
+    gp << "set title \"Pattern neurons - connections - " << chunk_time << "\"; \n";
+    /* 
+    gp << "plot '-' lw 3 with lines title 'Connections from E',";
+    gp << "'-' lw 3 with lines title 'Connections from I'; \n";
+    */
+    gp << "set style data histogram; set style histogram cluster; \n";
+    gp << "plot '-' using 2 title 'Connections from E', '-' using 2 title 'Connections from I' ; \n";
+    gp.send1d(boost::make_tuple(neuron_numbers, connections_e));
+    gp.send1d(boost::make_tuple(neuron_numbers, negative_connections_i));
+
+    Gnuplot gp1;
+    gp1 << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
+    gp1 << "set xrange [0:]; \n";
+    gp1 << "set xlabel \"neurons\"; set ylabel \"Firing rate\"; \n";
+    gp1 << "set output \"" << outputFilePrefix << ".rates.png\"; \n";
+    gp1 << "set title \"Pattern neurons - rates - " << chunk_time << "\"; \n";
+    gp1 << "plot '-' using 1:2 lw 3 with lines; \n";
+    gp1.send1d(boost::make_tuple(neuron_numbers, rates));
+
+
+    Gnuplot gp2;
+    gp2 << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
+    gp2 << "set xrange [0:]; \n";
+    gp2 << "set xlabel \"connections from E\"; set ylabel \"Firing rate\"; \n";
+    gp2 << "set output \"" << outputFilePrefix << ".rates-e.png\"; \n";
+    gp2 << "set title \"Pattern neurons - rates vs E connections - " << chunk_time << "\"; \n";
+    gp2 << "plot '-' using 1:2 lw 3 with points; \n";
+    gp2.send1d(boost::make_tuple(connections_e, rates));
+
+
+    Gnuplot gp3;
+    gp3 << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
+    gp3 << "set xrange [0:]; \n";
+    gp3 << "set xlabel \"connections from I\"; set ylabel \"Firing rate\"; \n";
+    gp3 << "set output \"" << outputFilePrefix << ".rates-i.png\"; \n";
+    gp3 << "set title \"Pattern neurons - rates vs I connections" << chunk_time << "\"; \n";
+    gp3 << "plot '-' using 1:2 lw 3 with points; \n";
+    gp3.send1d(boost::make_tuple(connections_i, rates));
+
+    std::cout << outputFilePrefix << " files plotted" << std::endl;
+
+}		/* -----  end of function PlotConnectionsAndRates  ----- */
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  PlotHistogram
@@ -519,7 +588,6 @@ PlotDualHistogram (std::vector<unsigned int> values, std::vector<unsigned int> v
     void
 PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, AurynTime chunk_time, std::string colour, std::string legendLabel)
 {
-    std::vector<std::pair<unsigned int, unsigned int> > plot_hack;
     sort(values.begin(), values.end());
 
     double binwidth = (values.back() - values.front());
@@ -585,11 +653,13 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
  * =====================================================================================
  */
     void
-MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, AurynTime chunk_time, unsigned int patternRecalled, std::multimap <double, struct SNR_data> &snr_data)
+MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, AurynTime chunk_time, unsigned int patternRecalled, std::multimap <double, struct SNR_data> &snr_data, std::unordered_map<unsigned int, unsigned int> con_ee_count, std::unordered_map<unsigned int, unsigned int> con_ie_count)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
     std::vector <unsigned int>pattern_neurons_rate;
+    std::vector <unsigned int>pattern_neurons_connections_i;
+    std::vector <unsigned int>pattern_neurons_connections_e;
     std::vector <unsigned int>noise_neurons_rate;
     std::vector <unsigned int>recall_neurons_rate;
     std::vector <unsigned int>neuronsE_rate;
@@ -668,6 +738,8 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
         if(pattern_neurons_rate.size() != patterns[patternRecalled].size() && std::binary_search(patterns[patternRecalled].begin(), patterns[patternRecalled].end(), i))
         {
             pattern_neurons_rate.emplace_back(rate);
+            pattern_neurons_connections_e.emplace_back(con_ee_count[i]);
+            pattern_neurons_connections_i.emplace_back(con_ie_count[i]);
         }
         /*  It's not in the pattern and therefore a noise neuron */
         else
@@ -695,8 +767,17 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
         converter.clear();
         converter << parameters.output_file << "-" << chunk_time*dt << ".pattern.noise." << patternRecalled << ".histogram.png";
         PlotDualHistogram(pattern_neurons_rate, noise_neurons_rate, converter.str(), chunk_time*dt, "green" , "Pattern", "black", "Noise", "firing rate", "ratio of neurons" , 1./800., 1./7200. );
-    }
 
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "-" << chunk_time*dt << ".con-rates." << patternRecalled << ".histogram.png";
+        PlotDualHistogram(pattern_neurons_connections_e, pattern_neurons_connections_i, converter.str(), chunk_time*dt, "green" , "From E", "black", "From I", "Number of incoming connections", "ratio of pattern neurons" , 1./800., 1./800. );
+
+        converter.str("");
+        converter.clear();
+        converter << parameters.output_file << "-" << chunk_time*dt << ".con-rates." << patternRecalled; 
+        PlotConnectionsAndRates(pattern_neurons_rate, pattern_neurons_connections_e, pattern_neurons_connections_i, converter.str(), chunk_time*dt);
+    }
 
 
     snr_at_chunk_time = GetSNR(pattern_neurons_rate, noise_neurons_rate);
@@ -1529,4 +1610,98 @@ GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::st
 
     return ;
 }		/* -----  end of function GenerateMultiMeanWithSTDFromFiles  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GetConnectionCounts
+ *  Description:  Gets the number of connections received by post synaptic
+ *  neurons
+ * =====================================================================================
+ */
+std::unordered_map<unsigned int, unsigned int>
+CountIncomingConnections (std::vector<unsigned int> post_neurons_list)
+{
+    std::unordered_map<unsigned int, unsigned int>neuron_count_map;
+    for(std::vector<unsigned int>::iterator it = post_neurons_list.begin(); it != post_neurons_list.end(); it++)
+    {
+        std::unordered_map<unsigned int, unsigned int>::iterator it1(neuron_count_map.find(*it));
+        if(it1 != neuron_count_map.end())
+        {
+            it1->second++;
+        }
+        else
+        {
+            neuron_count_map[*it] = 1;
+        }
+    }
+    return neuron_count_map;
+}		/* -----  end of function GetConnectionCounts  ----- */
+
+
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  GetIncidentConnectionNumbers
+ *  Description:  
+ * =====================================================================================
+ */
+void
+GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con_ee, std::unordered_map<unsigned int, unsigned int> &con_ie)
+{
+    unsigned int neuronID;
+    std::ifstream ifs;
+    std::vector<unsigned int>post_neurons_e;
+    std::vector<unsigned int>post_neurons_i;
+    std::string meh;
+
+    ifs.open("00-Con_ee.txt");
+    if (ifs.is_open())
+    {
+        /* Need to skip the first six lines, which are header information */
+        for (int i = 0; i < 6; i++)
+        {
+            std::getline(ifs, meh);
+            /*  Remove this later, just using it for debugging */
+            std::cout << meh << std::endl;
+        }
+
+        while(ifs >> neuronID)
+        {
+            /*  second column */
+            ifs >> neuronID;
+            post_neurons_e.emplace_back(neuronID);
+            /*  reset of the line - the synaptic weight */
+            std::getline(ifs, meh);
+        }
+    }
+    ifs.close();
+
+    con_ee = CountIncomingConnections(post_neurons_e);
+
+
+    ifs.open("00-Con_ie.txt");
+    if (ifs.is_open())
+    {
+        /* Need to skip the first six lines, which are header information */
+        for (int i = 0; i < 6; i++)
+        {
+            std::getline(ifs, meh);
+            /*  Remove this later, just using it for debugging */
+            std::cout << meh << std::endl;
+        }
+
+        while(ifs >> neuronID)
+        {
+            /*  second column */
+            ifs >> neuronID;
+            post_neurons_i.emplace_back(neuronID);
+            /*  reset of the line - the synaptic weight */
+            std::getline(ifs, meh);
+        }
+    }
+    ifs.close();
+
+    con_ie = CountIncomingConnections(post_neurons_i);
+}
+
 #endif   /* ----- #ifndef utils_INC  ----- */

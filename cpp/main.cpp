@@ -52,6 +52,7 @@ main ( int ac, char *av[] )
     std::vector<boost::iostreams::mapped_file_source> spikes_E;
     std::vector<boost::iostreams::mapped_file_source> spikes_I;
     std::ostringstream converter;
+    std::unordered_map <unsigned int, unsigned int> con_ee_count, con_ie_count;
 
     global_clock_start = clock();
 
@@ -260,6 +261,8 @@ main ( int ac, char *av[] )
         /*  Load patterns and recalls */
         LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
 
+        GetIncidentConnectionNumbers(std::ref(con_ee_count), std::ref(con_ie_count));
+
         /*  Load memory mapped files */
         clock_start = clock();
         for (unsigned int i = 0; i < parameters.mpi_ranks; ++i)
@@ -306,7 +309,7 @@ main ( int ac, char *av[] )
                 }
                 /*  Now we can get back to running new threads */
 
-                threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + (1.0/dt),  j, std::ref(snr_data)));
+                threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + (1.0/dt),  j, std::ref(snr_data), con_ee_count, con_ie_count));
                 task_counter++;
             }
         }

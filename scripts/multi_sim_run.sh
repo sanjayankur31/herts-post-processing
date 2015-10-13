@@ -32,6 +32,11 @@ do
     pushd `tmux show-buffer`
         #~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S -s -e --pattern && rm *.ras *.netstate *.weightinfo *.rate *.log *merge* *bras -f
         ~/bin/research-bin/postprocess -o `tmux show-buffer` -c `tmux show-buffer`.cfg -S -s -e --pattern
+        sed '/^%/ d ' 00-Con_ee.txt |  cut -f2 -d " " |sort -n | uniq -c > 00-uniq-ee.txt
+        sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " |sort -n | uniq -c > 00-uniq-ie.txt
+        sed '/^%/ d ' 00-Con_ee.txt |  cut -f2 -d " " > 00-all-ee.txt
+        sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " > 00-all-ie.txt
+        wc -l 00-uniq* 00-all* > 00-conn-stats.txt
     popd
     echo `tmux show-buffer` >> dirs-created.txt
     rm -rf ~/dump/patternFilesTemp/ && sleep 1
