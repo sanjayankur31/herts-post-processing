@@ -474,6 +474,35 @@ ExtractChunk (char * chunk_start, char * chunk_end )
 
 /* 
  * ===  FUNCTION  ======================================================================
+ *         Name:  PlotHistogram
+ *  Description:  
+ * =====================================================================================
+ */
+    void
+PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, AurynTime chunk_time, std::string colour, std::string legendLabel, std::string xlabel, std::string ylabel, float normalise = 1.0)
+{
+    sort(values.begin(), values.end());
+
+    double binwidth = (values.back() - values.front());
+    binwidth /= values.size();
+
+    Gnuplot gp;
+    gp << "set style fill solid 0.5; set tics out nomirror; \n"; 
+    gp << "set xrange [0:]; \n";
+    gp << "set xlabel \"" << xlabel << "\"; set ylabel \"" << ylabel << "\"; \n";
+    gp << "binwidth=" << binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
+    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
+    gp << "set output \"" << outputFileName << "\"; \n";
+    gp << "set title \"Histogram at time " << chunk_time << "\"; \n";
+    gp << "plot '-'  using (bin($1,binwidth)):(" << normalise << ") smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\" ; \n";
+    gp.send1d(boost::make_tuple(values, values));
+
+    std::cout << outputFileName << " plotted." << "\n";
+
+}		/* -----  end of function PlotHistogram  ----- */
+
+/* 
+ * ===  FUNCTION  ======================================================================
  *         Name:  PlotDualHistogram
  *  Description:  Two histograms together, like E and I, noise and background
  *  and so on
@@ -500,7 +529,7 @@ PlotDualHistogram (std::vector<unsigned int> values, std::vector<unsigned int> v
     gp << "binwidth=" << graph_binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
     gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
     gp << "set output \"" << outputFileName << "\"; \n";
-    gp << "set title \"Histogram of firing rates at time " << chunk_time << "\"; \n";
+    gp << "set title \"Histogram at time " << chunk_time << "\"; \n";
     gp << "plot '-'  using (bin($1,binwidth)):(" << normalise1 << ") smooth freq with boxes lc rgb \"" << colour1 << "\" t \"" << legendLabel1 << "\" ,";
     gp << "'-'  using (bin($1,binwidth)):(" << normalise2 << ") smooth freq with boxes lc rgb \"" << colour2 << "\" t \"" << legendLabel2 << "\" ; \n";
     gp.send1d(boost::make_tuple(values, values));
@@ -552,7 +581,7 @@ PlotConnectionsAndRates ( std::vector<unsigned int>rates, std::vector<unsigned i
     gp1 << "set xlabel \"neurons\"; set ylabel \"Firing rate\"; \n";
     gp1 << "set output \"" << outputFilePrefix << ".rates.png\"; \n";
     gp1 << "set title \"Pattern neurons - rates - " << chunk_time << "\"; \n";
-    gp1 << "plot '-' using 1:2 lw 3 with lines; \n";
+    gp1 << "plot '-' using 1:2 lw 3 with points; \n";
     gp1.send1d(boost::make_tuple(neuron_numbers, rates));
 
 
@@ -571,42 +600,37 @@ PlotConnectionsAndRates ( std::vector<unsigned int>rates, std::vector<unsigned i
     gp3 << "set xrange [0:]; \n";
     gp3 << "set xlabel \"connections from I\"; set ylabel \"Firing rate\"; \n";
     gp3 << "set output \"" << outputFilePrefix << ".rates-i.png\"; \n";
-    gp3 << "set title \"Pattern neurons - rates vs I connections" << chunk_time << "\"; \n";
+    gp3 << "set title \"Pattern neurons - I connections vs rates" << chunk_time << "\"; \n";
     gp3 << "plot '-' using 1:2 lw 3 with points; \n";
     gp3.send1d(boost::make_tuple(connections_i, rates));
+
+    std::cout << "Sizes are: " << rates.size() << ", " << connections_i.size() << ", " << connections_e.size() << std::endl;
+
+    std::vector<boost::tuple<unsigned int, unsigned int, unsigned int> > data(800);
+    for (int i = 0; i < rates.size(); i++)
+    {
+        boost::tuple<unsigned int, unsigned int, unsigned int> something(connections_i[i], connections_e[i], rates[i]);
+        data.emplace_back(something);
+    }
+
+    Gnuplot gp4;
+    gp4 << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
+    gp4 << "set xlabel \"connections from I\"; set ylabel \"Connections from E\"; \n";
+    gp4 << "set output \"" << outputFilePrefix << ".splot.png\"; \n";
+    gp4 << "set title \"Pattern neurons - connections vs firing rate " << chunk_time << "\"; \n";
+    gp4 << "splot '-' with errorlines title 'Firing Rate'; \n";
+    gp4.send1d(data);
+
+    std::vector<unsigned int>conn_sum;
+    for (int i = 0; i < rates.size(); i++)
+    {
+        conn_sum.emplace_back(connections_e[i] + connections_i[i]);
+    }
+    PlotHistogram(conn_sum, outputFilePrefix + ".totalConnections.histogram.png", chunk_time, "blue", "Total incoming connections", "number of total incoming connections", "ratio of total pattern neurons", 1./800.);
 
     std::cout << outputFilePrefix << " files plotted" << std::endl;
 
 }		/* -----  end of function PlotConnectionsAndRates  ----- */
-
-/* 
- * ===  FUNCTION  ======================================================================
- *         Name:  PlotHistogram
- *  Description:  
- * =====================================================================================
- */
-    void
-PlotHistogram (std::vector<unsigned int> values, std::string outputFileName, AurynTime chunk_time, std::string colour, std::string legendLabel)
-{
-    sort(values.begin(), values.end());
-
-    double binwidth = (values.back() - values.front());
-    binwidth /= values.size();
-
-    Gnuplot gp;
-    gp << "set style fill solid 0.5; set tics out nomirror; \n"; 
-    gp << "set xrange [0:]; \n";
-    gp << "set xlabel \"firing rate\"; set ylabel \"number of neurons\"; \n";
-    gp << "binwidth=" << binwidth << "; bin(x,width)=width*floor(x/width)+width/2.0; \n";
-    gp << "set term png font \"/usr/share/fonts/dejavu/DejaVuSans.ttf,20\" size 1440,1440; \n";
-    gp << "set output \"" << outputFileName << "\"; \n";
-    gp << "set title \"Histogram of firing rates at time " << chunk_time << "\"; \n";
-    gp << "plot '-'  using (bin($1,binwidth)):(1.0) smooth freq with boxes lc rgb \"" << colour << "\" t \"" << legendLabel << "\" ; \n";
-    gp.send1d(boost::make_tuple(values, values));
-
-    std::cout << outputFileName << " plotted." << "\n";
-
-}		/* -----  end of function PlotHistogram  ----- */
 
 
 /* 
@@ -1670,7 +1694,7 @@ GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con
             /*  second column */
             ifs >> neuronID;
             post_neurons_e.emplace_back(neuronID);
-            /*  reset of the line - the synaptic weight */
+            /*  rest of the line - the synaptic weight */
             std::getline(ifs, meh);
         }
     }
@@ -1695,13 +1719,15 @@ GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con
             /*  second column */
             ifs >> neuronID;
             post_neurons_i.emplace_back(neuronID);
-            /*  reset of the line - the synaptic weight */
+            /*  rest of the line - the synaptic weight */
             std::getline(ifs, meh);
         }
     }
     ifs.close();
 
     con_ie = CountIncomingConnections(post_neurons_i);
+    std::cout << "Number of post neurons for I neurons is: " << post_neurons_i.size() << " and uniq is: " << con_ie.size() << std::endl;
+    std::cout << "Number of post neurons for E neurons is: " << post_neurons_e.size() << " and uniq is: " << con_ee.size() << std::endl;
 }
 
 #endif   /* ----- #ifndef utils_INC  ----- */
