@@ -1681,14 +1681,10 @@ GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con
     ifs.open("00-Con_ee.txt");
     if (ifs.is_open())
     {
-        /* Need to skip the first six lines, which are header information */
-        for (int i = 0; i < 6; i++)
-        {
-            std::getline(ifs, meh);
-            /*  Remove this later, just using it for debugging */
-            std::cout << meh << std::endl;
-        }
-
+        /*  get rid of totals - don't need them */
+        ifs >> neuronID;
+        ifs >> neuronID;
+        ifs >> neuronID;
         while(ifs >> neuronID)
         {
             /*  second column */
@@ -1706,14 +1702,10 @@ GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con
     ifs.open("00-Con_ie.txt");
     if (ifs.is_open())
     {
-        /* Need to skip the first six lines, which are header information */
-        for (int i = 0; i < 6; i++)
-        {
-            std::getline(ifs, meh);
-            /*  Remove this later, just using it for debugging */
-            std::cout << meh << std::endl;
-        }
-
+        /*  get rid of totals - don't need them */
+        ifs >> neuronID;
+        ifs >> neuronID;
+        ifs >> neuronID;
         while(ifs >> neuronID)
         {
             /*  second column */
