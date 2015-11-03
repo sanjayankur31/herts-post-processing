@@ -24,7 +24,7 @@
 PROGRAM_PREFIX="/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/"
 PATTERNFILES_DIR="$PROGRAM_PREFIX""src/input_files/"
 RECALL_RATIO=".50"
-MPI_RANKS="meh"
+MPI_RANKS="16"
 POSTPROCESS="no"
 POSTPROCESS_MASTER="no"
 DELETEDATAFILES="no"
@@ -78,11 +78,7 @@ function default()
     # the actual simulation
     SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
     CONFIGFILE="$PROGRAM_PREFIX""src/simulation_config.cfg"
-    if [ "xmeh" == "x$MPI_RANKS" ]
-    then
-        echo "[INFO] MPI ranks not specified. Grepping from configuration file."
-        MPI_RANKS=$(grep "mpi_ranks" $CONFIGFILE | sed "s/.*=//")
-    fi
+    echo "[INFO] MPI ranks being used: $MPI_RANKS"
 
     mkdir "$SIM_DIRECTORY"
     tmux set-buffer "$SIM_DIRECTORY"
@@ -91,6 +87,7 @@ function default()
         cp "$CONFIGFILE" ./$SIM_DIRECTORY.cfg
         echo "patternfile_prefix=$PATTERNFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
         echo "recallfile_prefix=$RECALLFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
+        echo "mpi_ranks=$MPI_RANKS" >> "$SIM_DIRECTORY"".cfg"
         echo >> "$SIM_DIRECTORY"".cfg"
         echo "#recall_ratio=$RECALL_RATIO" >> "$SIM_DIRECTORY"".cfg"
 
