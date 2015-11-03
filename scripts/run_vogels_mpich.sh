@@ -83,8 +83,12 @@ function default()
     echo "[INFO] MPI ranks being used: $MPI_RANKS"
 
     mkdir "$SIM_DIRECTORY"
-    tmux set-buffer "$SIM_DIRECTORY"
-    echo "[INFO] Saved in tmux buffer for your convenience."
+    if [ "xyes" == "x$SAVE_TMUX" ]
+    then
+        tmux set-buffer "$SIM_DIRECTORY"
+        echo "[INFO] Saved in tmux buffer for your convenience."
+    fi
+
     pushd "$SIM_DIRECTORY" > /dev/null 2>&1
         cp "$CONFIGFILE" ./$SIM_DIRECTORY.cfg
         echo "patternfile_prefix=$PATTERNFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
@@ -95,10 +99,10 @@ function default()
         echo "#recall_ratio=$RECALL_RATIO" >> "$SIM_DIRECTORY"".cfg"
 
         echo 
-        echo "[INFO] $ LD_LIBRARY_PATH=$PROGRAM_PREFIX""auryn/build/src/ mpiexec -n $MPI_RANKS $PROGRAM_PREFIX""bin/vogels --out $SIM_DIRECTORY" "--config $SIM_DIRECTORY"".cfg"
+        echo "[INFO] $ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PROGRAM_PREFIX""auryn/build/src/ mpiexec -n $MPI_RANKS $PROGRAM_PREFIX""bin/vogels --out $SIM_DIRECTORY" "--config $SIM_DIRECTORY"".cfg"
         echo 
 
-        LD_LIBRARY_PATH="$PROGRAM_PREFIX""auryn/build/src/" mpiexec -n $MPI_RANKS "$PROGRAM_PREFIX""bin/vogels" --out $SIM_DIRECTORY --config $SIM_DIRECTORY".cfg" 
+        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:""$PROGRAM_PREFIX""auryn/build/src/" mpiexec -n $MPI_RANKS "$PROGRAM_PREFIX""bin/vogels" --out $SIM_DIRECTORY --config $SIM_DIRECTORY".cfg" 
 
         if [ "xyes" == "x$POSTPROCESS" ]
         then
@@ -139,7 +143,7 @@ function default()
 
 function run()
 {
-    while getopts "hp:rs:m:tPD" OPTION
+    while getopts "hp:rs:m:tPDe:" OPTION
     do
         case $OPTION in
             p)
@@ -197,8 +201,11 @@ function run()
 which tmux > /dev/null 2>&1
 if [ 0 -ne "$?" ]
 then
-    echo "[ERROR] Tmux not found on this machine. Will not run. Exiting"
-    exit -3
+    SAVE_TMUX="no"
+    echo "[INFO] Tmux not found on this machine. Not saving directory name"
+else
+    SAVE_TMUX="yes"
+    echo "[INFO] Tmux found on this machine. Saving directory name"
 fi
 
 NUMARGS=$#
