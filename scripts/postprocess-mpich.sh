@@ -569,5 +569,22 @@ function plotoverallplots ()
     wait
 }
 
-run "$@"
+# check for tmux
+which gnuplot > /dev/null 2>&1
+if [ 0 -ne "$?" ]
+then
+    echo "[ERROR] gnuplot not found on this machine. Will not run. Exiting"
+    exit -3
+fi
+
+NUMARGS=$#
+echo "[INFO] Number of arguments: $NUMARGS"
+if [ $NUMARGS -eq 0 ]; then
+    echo "[INFO] No arguments received. Running with default configuration. Use -h to see usage help."
+
+    default
+    exit 0
+else
+    run "$@"
+fi
 
