@@ -29,6 +29,7 @@ POSTPROCESS="no"
 POSTPROCESS_MASTER="no"
 DELETEDATAFILES="no"
 RANDOM_PATTERNS="no"
+PATTERNS="3"
 
 function usage ()
 {
@@ -46,6 +47,7 @@ OPTIONS:
     -P  postprocess to generate SNR graphs (default: $POSTPROCESS)
     -D  delete datafiles after graph generation (default: $DELETEDATAFILES)
     -t  run post process script to generate master graphs (default: $POSTPROCESS_MASTER)
+    -e  number of patterns (default: $PATTERNS)
 EOF
 
 }
@@ -88,6 +90,7 @@ function default()
         echo "patternfile_prefix=$PATTERNFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
         echo "recallfile_prefix=$RECALLFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
         echo "mpi_ranks=$MPI_RANKS" >> "$SIM_DIRECTORY"".cfg"
+        echo "num_pats=$PATTERNS" >>  "$SIM_DIRECTORY"".cfg"
         echo >> "$SIM_DIRECTORY"".cfg"
         echo "#recall_ratio=$RECALL_RATIO" >> "$SIM_DIRECTORY"".cfg"
 
@@ -161,6 +164,9 @@ function run()
                 ;;
             D)
                 DELETEDATAFILES="yes"
+                ;;
+            e)
+                PATTERNS=$OPTARG
                 ;;
             h)
                 usage
