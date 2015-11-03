@@ -21,6 +21,15 @@
 # Wrapper for my simulation.
 #
 
+PROGRAM_PREFIX="/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/"
+PATTERNFILES_DIR="$PROGRAM_PREFIX""src/input_files/"
+RECALL_RATIO=".50"
+MPI_RANKS="meh"
+POSTPROCESS="no"
+POSTPROCESS_MASTER="no"
+DELETEDATAFILES="no"
+RANDOM_PATTERNS="no"
+
 function usage ()
 {
     cat << EOF
@@ -30,32 +39,132 @@ Wrapper script for my simulation program.
 
 OPTIONS:
     -h  Show this message and exit
+    -p  program_prefix (default: $PROGRAM_PREFIX)
+    -r  use randomly generated pattern files (default: $RANDOM_PATTERNS)
+    -s  ratio of recall neurons (default: $RECALL_RATIO). IMPLIES -r.
+    -m  number of mpi ranks to use (default: taken from simulation_config.cfg)
+    -P  postprocess to generate SNR graphs (default: $POSTPROCESS)
+    -D  delete datafiles after graph generation (default: $DELETEDATAFILES)
+    -t  run post process script to generate master graphs (default: $POSTPROCESS_MASTER)
 EOF
 
 }
 function default()
 {
-    newsimenv=$(date "+%Y%m%d%H%M")
-    configfile="/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/src/simulation_config.cfg"
-    mpi_ranks=$(grep "mpi_ranks" $configfile | sed "s/.*=//")
-    mkdir -v "$newsimenv"
-    pushd "$newsimenv"
-        cp "$configfile" ./$newsimenv.cfg -v
-        echo "$ mpiexec -n $mpi_ranks vogels --out $newsimenv"
-        LD_LIBRARY_PATH=/home/asinha/Documents/02_Code/00_repos/00_mine/herts-research-repo/auryn/src/.libs mpiexec -n $mpi_ranks ~/bin/research-bin/vogels --out $newsimenv --config $newsimenv".cfg"
-        rm -f *.netstate
-    popd
-    echo "Result directory is: $newsimenv"
-    tmux set-buffer "$newsimenv"
-    echo "Saved in tmux buffer for your convenience."
-}
+    echo "[INFO] Program prefix is: $PROGRAM_PREFIX"
 
+    # setup for random pattern files
+    if [ "xyes" == "x$RANDOM_PATTERNS" ]
+    then
+        PATTERNFILES_DIR="$PROGRAM_PREFIX""00_patternfiles/"
+        echo "[INFO] Generating random pattern and recall files with recall ratio of $RECALL_RATIO in $PATTERNFILES_DIR"
+        mkdir "$PATTERNFILES_DIR"
+        pushd "$PATTERNFILES_DIR" > /dev/null 2>&1
+            cp "$PROGRAM_PREFIX""/src/postprocess/scripts/generatePatterns.R" .
+            sed -i "s|recallPercentOfPattern <- 0.50|recallPercentOfPattern <- $RECALL_RATIO|" generatePatterns.R
+            Rscript generatePatterns.R
+        popd > /dev/null 2>&1
+        PATTERNFILE_PREFIX="$PATTERNFILES_DIR""randomPatternFile-"
+        RECALLFILE_PREFIX="$PATTERNFILES_DIR""recallPatternFile-"
+
+    else
+        echo "[INFO] Random patterns not used, default recall ratio of .05 used"
+        echo "[INFO] Pattern files used from $PATTERNFILES_DIR""50-percent/"
+
+        PATTERNFILE_PREFIX="$PATTERNFILES_DIR""50-percent/randomPatternFile-"
+        RECALLFILE_PREFIX="$PATTERNFILES_DIR""50-percent/recallPatternFile-"
+    fi
+
+    # the actual simulation
+    SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
+    CONFIGFILE="$PROGRAM_PREFIX""src/simulation_config.cfg"
+    if [ "xmeh" == "x$MPI_RANKS" ]
+    then
+        echo "[INFO] MPI ranks not specified. Grepping from configuration file."
+        MPI_RANKS=$(grep "mpi_ranks" $CONFIGFILE | sed "s/.*=//")
+    fi
+
+    mkdir "$SIM_DIRECTORY"
+    tmux set-buffer "$SIM_DIRECTORY"
+    echo "[INFO] Saved in tmux buffer for your convenience."
+    pushd "$SIM_DIRECTORY" > /dev/null 2>&1
+        cp "$CONFIGFILE" ./$SIM_DIRECTORY.cfg
+        echo "patternfile_prefix=$PATTERNFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
+        echo "recallfile_prefix=$RECALLFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
+        echo >> "$SIM_DIRECTORY"".cfg"
+        echo "#recall_ratio=$RECALL_RATIO" >> "$SIM_DIRECTORY"".cfg"
+
+        echo 
+        echo "[INFO] $ LD_LIBRARY_PATH=$PROGRAM_PREFIX""auryn/build/src/ mpiexec -n $MPI_RANKS $PROGRAM_PREFIX""bin/vogels --out $SIM_DIRECTORY" "--config $SIM_DIRECTORY"".cfg"
+        echo 
+
+        LD_LIBRARY_PATH="$PROGRAM_PREFIX""auryn/build/src/" mpiexec -n $MPI_RANKS "$PROGRAM_PREFIX""bin/vogels" --out $SIM_DIRECTORY --config $SIM_DIRECTORY".cfg" 
+
+        if [ "xyes" == "x$POSTPROCESS" ]
+        then
+
+            echo "[INFO] Postprocessing generated data files."
+
+            "$PROGRAM_PREFIX""bin/postprocess" -o "$SIM_DIRECTORY" -c "$SIM_DIRECTORY".cfg -S -s -e --pattern
+
+            sed -i '/^%/ d' 00-Con_* # get rid of useless headers
+            sort -g -m 00-Con_ee* > 00-Con_ee.txt
+            sort -g -m 00-Con_ie* > 00-Con_ie.txt
+            sed '/^%/ d ' 00-Con_ee.txt |  cut -f2 -d " " |sort -n | uniq -c > 00-uniq-ee.txt
+            sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " |sort -n | uniq -c > 00-uniq-ie.txt
+            sed '/^%/ d ' 00-Con_ee.txt |  cut -f2 -d " " > 00-all-ee.txt
+            sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " > 00-all-ie.txt
+            wc -l 00-uniq* 00-all* > 00-conn-stats.txt
+
+        fi
+    popd > /dev/null 2>&1
+
+    if [ "xyes" == "x$POSTPROCESS_MASTER" ]
+    then
+        "$PROGRAM_PREFIX""/src/postprocess/scripts/postprocess-mpich.sh" -d "$SIM_DIRECTORY" -o
+    fi
+
+    if [ "xyes" == "x$DELETEDATAFILES" ]
+    then
+        pushd "$SIM_DIRECTORY" > /dev/null 2>&1
+            rm *.ras *.netstate *.weightinfo *.rate *.log *merge* *bras -f
+        popd > /dev/null 2>&1
+    fi
+
+    echo "Result directory is: $SIM_DIRECTORY"
+    rm -rf $PATTERNFILES_DIR
+
+    exit 0
+}
 
 function run()
 {
-    while getopts "h" OPTION
+    while getopts "hp:rs:m:tPD" OPTION
     do
         case $OPTION in
+            p)
+                PROGRAM_PREFIX=$OPTARG
+                ;;
+            r)
+                RANDOM_PATTERNS="yes"
+                ;;
+            s)
+                RECALL_RATIO=$OPTARG
+                RANDOM_PATTERNS="yes"
+                default
+                ;;
+            m) 
+                MPI_RANKS=$OPTARG
+                ;;
+            t)
+                POSTPROCESS_MASTER="yes"
+                ;;
+            P)
+                POSTPROCESS="yes"
+                ;;
+            D)
+                DELETEDATAFILES="yes"
+                ;;
             h)
                 usage
                 exit 1
@@ -66,8 +175,37 @@ function run()
                 ;;
         esac
     done
+
+    which gnuplot > /dev/null 2>&1
+    if [ 0 -ne "$?" ]
+    then
+        echo "[ERROR] Gnuplot not found on this machine. Will not postprocess and will not delete files."
+        POSTPROCESS="no"
+        POSTPROCESS_MASTER="no"
+        DELETEDATAFILES="no"
+    fi
+
     default
 }
 
+# MAIN CALLS
 
-run "$@"
+# check for tmux
+which tmux > /dev/null 2>&1
+if [ 0 -ne "$?" ]
+then
+    echo "[ERROR] Tmux not found on this machine. Will not run. Exiting"
+    exit -3
+fi
+
+NUMARGS=$#
+echo "[INFO] Number of arguments: $NUMARGS"
+if [ $NUMARGS -eq 0 ]; then
+    echo "[INFO] No arguments received. Running with default configuration. Use -h to see usage help."
+
+    default
+    exit 0
+else
+    run "$@"
+fi
+
