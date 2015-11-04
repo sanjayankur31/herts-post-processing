@@ -39,6 +39,7 @@
 #include <mutex>
 #include "auryn_definitions.h"
 #include <unordered_map>
+#include <boost/mpi.hpp>
 
 
 /*-----------------------------------------------------------------------------
@@ -677,7 +678,7 @@ GetSNR (std::vector<unsigned int> patternRates, std::vector<unsigned int> noiseR
  * =====================================================================================
  */
     void
-MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, AurynTime chunk_time, unsigned int patternRecalled, std::multimap <double, struct SNR_data> &snr_data, std::unordered_map<unsigned int, unsigned int> con_ee_count, std::unordered_map<unsigned int, unsigned int> con_ie_count)
+MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std::vector<boost::iostreams::mapped_file_source> &spikes_I, std::vector<std::vector<unsigned int> >&patterns, std::vector<std::vector <unsigned int> >&recalls, AurynTime chunk_time, unsigned int patternRecalled, std::unordered_map<unsigned int, unsigned int> con_ee_count, std::unordered_map<unsigned int, unsigned int> con_ie_count, boost::mpi::communicator world)
 {
     std::vector <unsigned int>neuronsE;
     std::vector <unsigned int>neuronsI;
@@ -806,11 +807,43 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
 
     snr_at_chunk_time = GetSNR(pattern_neurons_rate, noise_neurons_rate);
     std::cout << "SNR at time " << chunk_time*dt << " is " << snr_at_chunk_time.SNR << "\n";
-    std::lock_guard<std::mutex> guard(snr_data_mutex);
-    snr_data.insert(std::pair<double, struct SNR_data>((chunk_time*dt), snr_at_chunk_time));
-    std::cout << "SNR complete size " << " is " << snr_data.size() << "\n";
 
+    std::ofstream snr_file, mean_file, std_file, mean_noise_file, std_noise_file;
+    converter.str("");
+    converter.clear();
+    converter << "00-SNR-data." << world.rank() << ".txt";
+    snr_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    snr_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.SNR << std::endl;
+    snr_file.close();
 
+    converter.str("");
+    converter.clear();
+    converter << "00-Mean-data." << world.rank() << ".txt";
+    mean_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    mean_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.mean << std::endl;
+    mean_file.close();
+
+    converter.str("");
+    converter.clear();
+    converter << "00-STD-data." << world.rank() << ".txt";
+    std_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    std_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.std << std::endl;
+    std_file.close();
+
+    converter.str("");
+    converter.clear();
+    converter << "00-Mean-noise-data." << world.rank() << ".txt";
+    mean_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    mean_noise_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.mean_noise << std::endl;
+    mean_noise_file.close();
+;
+    converter.clear();
+    converter << "00-STD-noise-data." << world.rank() << ".txt";
+    std_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    std_noise_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.std_noise << std::endl;
+    std_noise_file.close();
+
+    std::cout << "Rank finished printing SNR files." << std::endl;
     return;
 }		/* -----  end of function MasterFunction  ----- */
 

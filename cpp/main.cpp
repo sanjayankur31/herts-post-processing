@@ -39,16 +39,15 @@ extern std::mutex snr_data_mutex;
     int
 main ( int ac, char *av[] )
 {
+    boost::mpi::environment env;
+    boost::mpi::communicator world;
+
     clock_t global_clock_start, global_clock_end;
     clock_t clock_start, clock_end;
     std::vector<std::vector<unsigned int> > patterns;
     std::vector<std::vector<unsigned int> > recalls;
     std::vector<AurynTime> graphing_times;
     std::multimap <double, struct SNR_data> snr_data;
-    unsigned int threads_max = 0;
-    unsigned int task_counter = 0;
-    std::vector<std::thread> threadlist;
-    std::thread master_graph_thread;
     std::vector<boost::iostreams::mapped_file_source> spikes_E;
     std::vector<boost::iostreams::mapped_file_source> spikes_I;
     std::ostringstream converter;
@@ -232,20 +231,12 @@ main ( int ac, char *av[] )
     }
 
 
-    /*-----------------------------------------------------------------------------
-     *  MAIN LOGIC BEGINS HERE
-     *-----------------------------------------------------------------------------*/
     if(plot_this.processRas)
     {
-        /*  At the most, use 20 threads, other wise WAIT */
-        threads_max = (parameters.mpi_ranks <= 20) ? parameters.mpi_ranks : 20;
-        std::cout << "Maximum number of threads in use: " << threads_max << "\n";
-
-        /* Let this run independently. It takes quite a while */
-        if (plot_this.master)
-        {
-            master_graph_thread = std::thread (PlotMasterGraph);
-        }
+        /*-----------------------------------------------------------------------------
+         *  BEGIN SETUP
+         *-----------------------------------------------------------------------------*/
+        std::cout << "Ranks available and therefore in use: " << parameters.mpi_ranks << "\n";
 
         /*  Get plot times */
         graphing_times = ReadTimeToPlotListFromFile();
@@ -254,6 +245,8 @@ main ( int ac, char *av[] )
             std::cerr << "Graphing times were not generated. Exiting program." << "\n";
             return -1;
         }
+        /*  Print them out to check */
+        std::cout << "Graphing times are: ";
         for (std::vector<AurynTime>::iterator it = graphing_times.begin(); it != graphing_times.end(); it++)
             std::cout << *it << "\t";
         std::cout << "\n";
@@ -261,6 +254,7 @@ main ( int ac, char *av[] )
         /*  Load patterns and recalls */
         LoadPatternsAndRecalls(std::ref(patterns), std::ref(recalls));
 
+        /* Get the connection list */
         GetIncidentConnectionNumbers(std::ref(con_ee_count), std::ref(con_ie_count));
 
         /*  Load memory mapped files */
@@ -282,51 +276,48 @@ main ( int ac, char *av[] )
         clock_end = clock();
         std::cout << spikes_E.size() <<  " E and " << spikes_I.size() << " I files mapped in " << (clock_end - clock_start)/CLOCKS_PER_SEC << " seconds.\n";
 
+        /*-----------------------------------------------------------------------------
+         *  END SETUP
+         *-----------------------------------------------------------------------------*/
+
         /*  Main worker loop */
         unsigned int time_counter = 0;
-        for (unsigned int i = 0; i < parameters.num_pats; i++)
+        unsigned int total_snr_lines_to_be_processed = (parameters.num_pats * (parameters.num_pats + 1)/2);
+
+        std::vector<unsigned int> number_tasks_ranks(40,0);
+
+        time_counter = 0;
+        unsigned int task_counter = 0;
+        for (unsigned int i = 0; i < parameters.num_pats ; i++)
         {
-            for(unsigned int j = 0; j <= i; j++)
+            for (unsigned int j = 0; j <= i; j++)
             {
-                /*  If thread_max threads are running, wait for them to finish before
-                 *  starting a second round.
-                 *
-                 *  Yes, this can be optimised by using a thread pool but I really
-                 *  don't have the patience to look into ThreadPool or a
-                 *  boost::thread_group today!
-                 */
-                if (!(task_counter < threads_max))
+                if (task_counter < parameters.mpi_ranks)
                 {
-                    for (std::thread &t: threadlist)
+                    if (world.rank() == task_counter)
                     {
-                        if(t.joinable())
-                        {
-                            t.join();
-                            task_counter--;
-                        }
+                        std::cout << "Rank " << world.rank() << " is running." << std::endl;
+                        MasterFunction(std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + (1.0/dt),  j, con_ee_count, con_ie_count, world);
                     }
-                    threadlist.clear();
+                    task_counter++;
                 }
-                /*  Now we can get back to running new threads */
-
-                threadlist.emplace_back(std::thread (MasterFunction, std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + (1.0/dt),  j, std::ref(snr_data), con_ee_count, con_ie_count));
-                task_counter++;
-            }
-        }
-        /*  End of work */
-        while(task_counter > 0)
-        {
-            for (std::thread &t: threadlist)
-            {
-                if(t.joinable())
+                else
                 {
-                    t.join();
-                    task_counter--;
+                    /*  Wait for all ranks to finish and then start a second set of
+                     *  runs. Of course, this isn't the most efficient, I should be
+                     *  telling a rank to start as soon as it finishes one task but
+                     *  that requires me to make the ranks return something and
+                     *  that means having a head rank and I don't want that. */
+                    world.barrier();
+                    task_counter = 0;
                 }
             }
         }
-        threadlist.clear();
+    }
+    return 0;
 
+
+#if  0     /* ----- #if 0 : If0Label_1 ----- */
         /*  Wait for all your threads to finish first! */
         if(plot_this.snr_graphs)
         {
@@ -637,6 +628,16 @@ main ( int ac, char *av[] )
         GenerateSNR_VS_WPatFromFile(inputs);
     }
     global_clock_end = clock();
+
+    /* Generate master graph at the end. This will basically make system calls
+     * and things or just call a bash script for me
+     */
+    if (plot_this.master)
+    {
+        PlotMasterGraph();
+    }
     std::cout << "Total time taken: " << (global_clock_end - global_clock_start)/CLOCKS_PER_SEC << "\n";
     return 0;
+#endif     /* ----- #if 0 : If0Label_1 ----- */
+
 }				/* ----------  end of function main  ---------- */
