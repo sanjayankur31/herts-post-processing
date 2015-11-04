@@ -55,6 +55,7 @@ function default()
 {
     echo "[INFO] Program prefix is: $PROGRAM_PREFIX"
     SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
+    mkdir "$SIM_DIRECTORY"
 
     # setup for random pattern files
     if [ "xyes" == "x$RANDOM_PATTERNS" ]
@@ -82,7 +83,6 @@ function default()
     CONFIGFILE="$PROGRAM_PREFIX""src/simulation_config.cfg"
     echo "[INFO] MPI ranks being used: $MPI_RANKS"
 
-    mkdir "$SIM_DIRECTORY"
     if [ "xyes" == "x$SAVE_TMUX" ]
     then
         tmux set-buffer "$SIM_DIRECTORY"
