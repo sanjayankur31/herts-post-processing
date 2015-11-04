@@ -54,11 +54,12 @@ EOF
 function default()
 {
     echo "[INFO] Program prefix is: $PROGRAM_PREFIX"
+    SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
 
     # setup for random pattern files
     if [ "xyes" == "x$RANDOM_PATTERNS" ]
     then
-        PATTERNFILES_DIR="$PROGRAM_PREFIX""00_patternfiles/"
+        PATTERNFILES_DIR="$SIM_DIRECTORY""/00_patternfiles/"
         echo "[INFO] Generating random pattern and recall files with recall ratio of $RECALL_RATIO in $PATTERNFILES_DIR"
         mkdir "$PATTERNFILES_DIR"
         pushd "$PATTERNFILES_DIR" > /dev/null 2>&1
@@ -78,7 +79,6 @@ function default()
     fi
 
     # the actual simulation
-    SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
     CONFIGFILE="$PROGRAM_PREFIX""src/simulation_config.cfg"
     echo "[INFO] MPI ranks being used: $MPI_RANKS"
 
@@ -131,13 +131,12 @@ function default()
     if [ "xyes" == "x$DELETEDATAFILES" ]
     then
         pushd "$SIM_DIRECTORY" > /dev/null 2>&1
-            rm *.ras *.netstate *.weightinfo *.rate *.log *merge* *bras -f
+            rm *.ras *.weightinfo *.rate *.log *merge* *bras -f
         popd > /dev/null 2>&1
     fi
+    rm -f *.netstate 
 
     echo "Result directory is: $SIM_DIRECTORY"
-    rm -rf $PATTERNFILES_DIR
-
     exit 0
 }
 
