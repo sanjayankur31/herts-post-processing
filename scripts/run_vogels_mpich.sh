@@ -54,13 +54,14 @@ EOF
 function default()
 {
     echo "[INFO] Program prefix is: $PROGRAM_PREFIX"
-    SIM_DIRECTORY="$(pwd)""/"$(date "+%Y%m%d%H%M")
-    mkdir "$SIM_DIRECTORY"
+    SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
+    SIM_DIRECTORY_COMPLETE="$(pwd)""/""$SIM_DIRECTORY"
+    mkdir "$SIM_DIRECTORY_COMPLETE"
 
     # setup for random pattern files
     if [ "xyes" == "x$RANDOM_PATTERNS" ]
     then
-        PATTERNFILES_DIR="$SIM_DIRECTORY""/00_patternfiles/"
+        PATTERNFILES_DIR="$SIM_DIRECTORY_COMPLETE""/00_patternfiles/"
         echo "[INFO] Generating random pattern and recall files with recall ratio of $RECALL_RATIO in $PATTERNFILES_DIR"
         mkdir "$PATTERNFILES_DIR"
         pushd "$PATTERNFILES_DIR" > /dev/null 2>&1
@@ -89,7 +90,7 @@ function default()
         echo "[INFO] Saved in tmux buffer for your convenience."
     fi
 
-    pushd "$SIM_DIRECTORY" > /dev/null 2>&1
+    pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
         cp "$CONFIGFILE" ./$SIM_DIRECTORY.cfg
         echo "patternfile_prefix=$PATTERNFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
         echo "recallfile_prefix=$RECALLFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
@@ -138,13 +139,13 @@ function default()
 
     if [ "xyes" == "x$DELETEDATAFILES" ]
     then
-        pushd "$SIM_DIRECTORY" > /dev/null 2>&1
+        pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
             rm *.ras *.weightinfo *.rate *.log *merge* *bras -f
         popd > /dev/null 2>&1
     fi
     rm -f *.netstate 
 
-    echo "Result directory is: $SIM_DIRECTORY"
+    echo "Result directory is: $SIM_DIRECTORY_COMPLETE"
     exit 0
 }
 
