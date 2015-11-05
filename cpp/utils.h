@@ -248,7 +248,7 @@ ReadTimeToPlotListFromFile ()
     std::vector<AurynTime> graphing_times;
     double temp;
     std::ifstream timefilestream;
-    timefilestream.open(parameters.plot_times_file);
+    timefilestream.open(parameters.plot_times_file, std::ifstream::in);
     std::cerr << "Recall times file is: " << parameters.plot_times_file << "\n";
     if (timefilestream.is_open())
     {
@@ -837,6 +837,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     mean_noise_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.mean_noise << std::endl;
     mean_noise_file.close();
 ;
+    converter.str("");
     converter.clear();
     converter << "00-STD-noise-data." << world.rank() << ".txt";
     std_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
@@ -1702,7 +1703,7 @@ CountIncomingConnections (std::vector<unsigned int> post_neurons_list)
  *  Description:  
  * =====================================================================================
  */
-void
+int
 GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con_ee, std::unordered_map<unsigned int, unsigned int> &con_ie)
 {
     unsigned int neuronID;
@@ -1711,7 +1712,7 @@ GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con
     std::vector<unsigned int>post_neurons_i;
     std::string meh;
 
-    ifs.open("00-Con_ee.txt");
+    ifs.open("00-Con_ee.txt", std::ifstream::in);
     if (ifs.is_open())
     {
         /*  get rid of totals - don't need them */
@@ -1726,13 +1727,18 @@ GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con
             /*  rest of the line - the synaptic weight */
             std::getline(ifs, meh);
         }
+        ifs.close();
     }
-    ifs.close();
+    else 
+    {
+        std::cout << "ERROR: couldn't open EE connection file. Aborting" << std::endl;
+        return -10;
+    }
 
     con_ee = CountIncomingConnections(post_neurons_e);
 
 
-    ifs.open("00-Con_ie.txt");
+    ifs.open("00-Con_ie.txt", std::ifstream::in);
     if (ifs.is_open())
     {
         /*  get rid of totals - don't need them */
@@ -1747,12 +1753,18 @@ GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con
             /*  rest of the line - the synaptic weight */
             std::getline(ifs, meh);
         }
+        ifs.close();
     }
-    ifs.close();
+    else 
+    {
+        std::cout << "ERROR: couldn't open IE connection file. Aborting" << std::endl;
+        return -10;
+    }
 
     con_ie = CountIncomingConnections(post_neurons_i);
     std::cout << "Number of post neurons for I neurons is: " << post_neurons_i.size() << " and uniq is: " << con_ie.size() << std::endl;
     std::cout << "Number of post neurons for E neurons is: " << post_neurons_e.size() << " and uniq is: " << con_ee.size() << std::endl;
+    return 0;
 }
 
 #endif   /* ----- #ifndef utils_INC  ----- */

@@ -233,10 +233,22 @@ main ( int ac, char *av[] )
 
     if(plot_this.processRas)
     {
+        /*  Main worker loop */
+        unsigned int total_snr_lines_to_be_processed = (parameters.num_pats * (parameters.num_pats + 1)/2);
+        
+        /*  diagnostics printed by rank 0 only */
+        if (world.rank() == 0)
+            std::cout << "Ranks available and therefore in use: " << parameters.mpi_ranks << "\n";
+
         /*-----------------------------------------------------------------------------
-         *  BEGIN SETUP
+         *  BEGIN SETUP - each rank will run this code
+         *
+         *  This can be optimised. For example, if there are more ranks than
+         *  entries in the time file, I can easily limit the number of ranks
+         *  doing this. The point is, is it worth it? More often than not, I'll
+         *  have more entries than ranks and each rank will in fact need all
+         *  this general data.
          *-----------------------------------------------------------------------------*/
-        std::cout << "Ranks available and therefore in use: " << parameters.mpi_ranks << "\n";
 
         /*  Get plot times */
         graphing_times = ReadTimeToPlotListFromFile();
@@ -280,39 +292,35 @@ main ( int ac, char *av[] )
          *  END SETUP
          *-----------------------------------------------------------------------------*/
 
-        /*  Main worker loop */
-        unsigned int time_counter = 0;
-        unsigned int total_snr_lines_to_be_processed = (parameters.num_pats * (parameters.num_pats + 1)/2);
-
-        std::vector<unsigned int> number_tasks_ranks(40,0);
-
-        time_counter = 0;
-        unsigned int task_counter = 0;
-        for (unsigned int i = 0; i < parameters.num_pats ; i++)
+        for (unsigned int i = 0; i <= total_snr_lines_to_be_processed/world.size(); i++)
         {
-            for (unsigned int j = 0; j <= i; j++)
+            /*  The time I want each rank to graph - the index from the list in
+             *  fact */
+            unsigned int graphing_time = i * world.size() + world.rank();
+            unsigned int counter = 0;
+
+            /*  otherwise we don't want ranks kicking off and running into
+             *  segfaults */
+            if(graphing_time < total_snr_lines_to_be_processed)
             {
-                if (task_counter < parameters.mpi_ranks)
+                /*  Calculate the pattern that is recalled at this time. I
+                 *  wonder if there is an easier way */
+                for(unsigned int k = 0; k < parameters.num_pats; k++)
                 {
-                    if (world.rank() == task_counter)
+                    for (unsigned int j = 0; j <=k; j++)
                     {
-                        std::cout << "Rank " << world.rank() << " is running." << std::endl;
-                        MasterFunction(std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[time_counter++] + (1.0/dt),  j, con_ee_count, con_ie_count, world);
+                        if (counter == graphing_time)
+                        {
+                            std::cout << "Rank " << world.rank() << " is running on line " << i + world.rank() << std::endl;
+                            MasterFunction(std::ref(spikes_E), std::ref(spikes_I), std::ref(patterns), std::ref(recalls), graphing_times[graphing_time] + (1.0/dt),  j, con_ee_count, con_ie_count, world);
+                        }
+                        counter++;
                     }
-                    task_counter++;
-                }
-                else
-                {
-                    /*  Wait for all ranks to finish and then start a second set of
-                     *  runs. Of course, this isn't the most efficient, I should be
-                     *  telling a rank to start as soon as it finishes one task but
-                     *  that requires me to make the ranks return something and
-                     *  that means having a head rank and I don't want that. */
-                    world.barrier();
-                    task_counter = 0;
                 }
             }
         }
+        /*  Wait for all ranks to finish  */
+        world.barrier();
     }
     return 0;
 
