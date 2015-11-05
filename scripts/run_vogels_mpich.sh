@@ -54,7 +54,7 @@ EOF
 function default()
 {
     echo "[INFO] Program prefix is: $PROGRAM_PREFIX"
-    SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
+    SIM_DIRECTORY="$(pwd)""/"$(date "+%Y%m%d%H%M")
     mkdir "$SIM_DIRECTORY"
 
     # setup for random pattern files
@@ -109,8 +109,7 @@ function default()
 
             echo "[INFO] Postprocessing generated data files."
 
-            "$PROGRAM_PREFIX""bin/postprocess" -o "$SIM_DIRECTORY" -c "$SIM_DIRECTORY".cfg -S -s -e --pattern
-
+            echo "[INFO] Generating combined connection files for postprocessing"
             sed -i '/^%/ d' 00-Con_* # get rid of useless headers
             sort -g -m 00-Con_ee* > 00-Con_ee.txt
             sort -g -m 00-Con_ie* > 00-Con_ie.txt
@@ -119,6 +118,15 @@ function default()
             sed '/^%/ d ' 00-Con_ee.txt |  cut -f2 -d " " > 00-all-ee.txt
             sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " > 00-all-ie.txt
             wc -l 00-uniq* 00-all* > 00-conn-stats.txt
+
+            "$PROGRAM_PREFIX""bin/postprocess" -o "$SIM_DIRECTORY" -c "$SIM_DIRECTORY".cfg -S -s -e --pattern
+
+            echo "[INFO] Generating combined SNR, STD, Mean, Mean-noise, STD-noise files for postprocessing"
+            sort -g -m 00-SNR-data.* > 00-SNR-data.txt
+            sort -g -m 00-STD-data.* > 00-STD-data.txt
+            sort -g -m 00-Mean-data.* > 00-Mean-data.txt
+            sort -g -m 00-Mean-noise-data.* > 00-Mean-noise-data.txt
+            sort -g -m 00-STD-noise-data.* > 00-STD-noise-data.txt
 
         fi
     popd > /dev/null 2>&1
