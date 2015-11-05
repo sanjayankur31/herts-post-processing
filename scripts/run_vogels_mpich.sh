@@ -119,7 +119,7 @@ function default()
             sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " > 00-all-ie.txt
             wc -l 00-uniq* 00-all* > 00-conn-stats.txt
 
-            "$PROGRAM_PREFIX""bin/postprocess" -o "$SIM_DIRECTORY" -c "$SIM_DIRECTORY".cfg -S -s -e --pattern
+            "$PROGRAM_PREFIX""bin/postprocess_single" -o "$SIM_DIRECTORY" -c "$SIM_DIRECTORY".cfg -S -s -e --pattern
 
             echo "[INFO] Generating combined SNR, STD, Mean, Mean-noise, STD-noise files for postprocessing"
             sort -g -m 00-SNR-data.* > 00-SNR-data.txt

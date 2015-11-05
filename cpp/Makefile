@@ -6,13 +6,13 @@ CC = g++
 	CXXFLAGS +=  -I/usr/include -I../../../auryn/src/ -I/usr/include/mpich-x86_64 -I${MPI_INCLUDE} -std=c++11 
 
 
-all: postprocess
+all: postprocess_single
 
-postprocess: main.cpp utils.h
-	$(CC) $(CXXFLAGS) main.cpp -o postprocess $(LDFLAGS)
+postprocess_single: main.cpp utils.h
+	$(CC) $(CXXFLAGS) main.cpp -o postprocess_single $(LDFLAGS)
 
-install: postprocess
+install: postprocess_single
 	mkdir -p ../../../bin/
-	cp -v postprocess ../../../bin/
+	cp -v postprocess_single ../../../bin/
 clean:
-	rm -fv postprocess ../../../bin/postprocess
+	rm -fv postprocess_single ../../../bin/postprocess_single
