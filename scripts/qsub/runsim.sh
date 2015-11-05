@@ -29,4 +29,4 @@ module load mpi/openmpi-x86_64
 
 cd /stri-data/asinha/results/
 
-/stri-data/asinha/herts-research-repo/src/postprocess/scripts/run_vogels_mpich.sh -m 32 -p /stri-data/asinha/herts-research-repo/ -e 10
+/stri-data/asinha/herts-research-repo/src/postprocess/scripts/run_vogels_mpich.sh -m 32 -p /stri-data/asinha/herts-research-repo/ -e 10 -r
