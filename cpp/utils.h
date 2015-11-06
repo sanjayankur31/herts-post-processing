@@ -96,11 +96,9 @@ struct param parameters;
 
 struct what_to_plot
 {
-    what_to_plot (): master(false), pattern_graphs(false), snr_graphs (false), Metrics_from_file (false), cum_VS_over(false), multiSNR(false), multiMean(false), multiSTD(false), snr_VS_wPats(false), mean_VS_wPats(false), std_VS_wPats(false), formatPNG(false), processRas(false), singleMeanAndSTD(false), multiMeanAndSTD(false), for_prints(false), for_meetings(false) {}
+    what_to_plot (): master(false), snr_graphs (false), cum_VS_over(false), multiSNR(false), multiMean(false), multiSTD(false), snr_VS_wPats(false), mean_VS_wPats(false), std_VS_wPats(false), formatPNG(false),  singleMeanAndSTD(false), multiMeanAndSTD(false), for_prints(false), for_meetings(false) {}
     bool master;
-    bool pattern_graphs;
     bool snr_graphs;
-    bool Metrics_from_file;
     bool cum_VS_over;
     std::vector <double> wPats;
     bool multiSNR;
@@ -110,7 +108,6 @@ struct what_to_plot
     bool mean_VS_wPats;
     bool std_VS_wPats;
     bool formatPNG;
-    bool processRas;
     bool singleMeanAndSTD;
     bool multiMeanAndSTD;
     bool for_prints;
@@ -270,23 +267,6 @@ ReadTimeToPlotListFromFile ()
     return graphing_times;
 }		/* -----  end of function ReadTimeToPlotListFromFile  ----- */
 
-
-/*
- * ===  FUNCTION  ======================================================================
- *         Name:  PlotMasterGraph
- *  Description:  TODO - place holder for the time being
- * =====================================================================================
- */
-    void
-PlotMasterGraph ( )
-{
-    clock_t clock_start, clock_end;
-    clock_start = clock();
-
-    clock_end = clock();
-    std::cout << "Total time taken to plot master plot: " << (clock_end - clock_start)/CLOCKS_PER_SEC << "\n";
-    return;
-}		/* -----  end of function PlotMasterGraph  ----- */
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -749,6 +729,22 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     }
     /*  We have the inhibitory firing rate! */
 
+    /*  Print inhibitory neurons to a file */
+    converter.str("");
+    converter.clear();
+    converter << "00-firing-rate.i." << chunk_time*dt << "." << world.rank() << ".txt";
+    std::ifstream firing_rates_i;
+    firing_rates_i.open(converter.str(), std::ifstream::in);
+    if (firing_rates_i.is_open())
+    {
+        unsigned int i = 1;
+        for (std::vector <unsigned int>::iterator it = neuronsI.begin(); it != neuronsI.end(); it++)
+        {
+            firing_rates_i << i++ << "\t" << *it << std::endl;
+        }
+    }
+    firing_rates_i.close();
+
     /* Get frequencies of excitatory neurons and classify them into their
      * groups 
     */
@@ -776,37 +772,83 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
         {
             recall_neurons_rate.emplace_back(rate);
         }
-        /*  All E neurons */
+        /*  All other E neurons */
         neuronsE_rate.emplace_back(rate);
     }
 
+    /*  Print excitatory neurons to a file */
+    converter.str("");
+    converter.clear();
+    converter << "00-firing-rate.e." << chunk_time*dt << ".txt";
+    std::ifstream firing_rates_e;
+    firing_rates_e.open(converter.str(), std::ifstream::in);
+    if (firing_rates_e.is_open())
+    {
+        unsigned int i = 1;
+        for (std::vector <unsigned int>::iterator it = neuronsE.begin(); it != neuronsE.end(); it++)
+        {
+            firing_rates_E << i++ << "\t" << *it << std::endl;
+        }
+    }
+    firing_rates_E.close();
+
+    /*  Print pattern and noise files to a file */
+    std::ifstream firing_rates_e_pattern, connections_e, connections_i;
+    converter.str("");
+    converter.clear();
+    converter << "00-firing-rate.e.pattern." << chunk_time*dt << ".txt";
+    firing_rates_e_pattern.open(converter.str(), std::ifstream::in);
+    converter.str("");
+    converter.clear();
+    converter << "00-firing-rate.e.pattern.connections_e." << chunk_time*dt <<  ".txt";
+    connections_e.open(converter.str(), std::ifstream::in);
+    converter.str("");
+    converter.clear();
+    converter << "00-firing-rate.e.pattern.connections_i." << chunk_time*dt <<  ".txt";
+    connections_i.open(converter.str(), std::ifstream::in);
+    if (firing_rates_e_pattern.is_open() && connections_e.is_open() && connections_i.is_open())
+    {
+        for (unsigned int i = 0;  i <= pattern_neurons_rate.size(); i++)
+        {
+            firing_rates_e_pattern << i << "\t" << pattern_neurons_rate[i] << std::endl;
+            connections_e << i << "\t" << pattern_neurons_connections_e[i] << std::endl;
+            connections_i << i << "\t" << pattern_neurons_connections_i[i] << std::endl;
+        }
+    }
+    else
+    {
+        std::cerr << "Couldn't open some file for writing. Skipping. Run again." << std::endl;
+    }
+    firing_rates_E.close();
+    connections_e.close();
+    connections_i.close();
+
+    /*  Plot histogram for E and I neurons */
     converter.str("");
     converter.clear();
     converter << parameters.output_file << "-" << chunk_time*dt << ".e.i.histogram.png"; 
-
     PlotDualHistogram(neuronsE_rate, neuronsI_rate, converter.str(), chunk_time*dt, "blue", "Excitatory", "red", "Inhibitory", "firing rate", "ratio of neurons", 1./8000., 1./2000.);
 
-    if (plot_this.pattern_graphs)
-    {
-        converter.str("");
-        converter.clear();
-        converter << parameters.output_file << "-" << chunk_time*dt << ".pattern.noise." << patternRecalled << ".histogram.png";
-        PlotDualHistogram(pattern_neurons_rate, noise_neurons_rate, converter.str(), chunk_time*dt, "green" , "Pattern", "black", "Noise", "firing rate", "ratio of neurons" , 1./800., 1./7200. );
+    /*  Plot graphs for pattern and noise */
+    converter.str("");
+    converter.clear();
+    converter << parameters.output_file << "-" << chunk_time*dt << ".pattern.noise." << patternRecalled << ".histogram.png";
+    PlotDualHistogram(pattern_neurons_rate, noise_neurons_rate, converter.str(), chunk_time*dt, "green" , "Pattern", "black", "Noise", "firing rate", "ratio of neurons" , 1./800., 1./7200. );
 
-        converter.str("");
-        converter.clear();
-        converter << parameters.output_file << "-" << chunk_time*dt << ".con-rates." << patternRecalled << ".histogram.png";
-        PlotDualHistogram(pattern_neurons_connections_e, pattern_neurons_connections_i, converter.str(), chunk_time*dt, "green" , "From E", "black", "From I", "Number of incoming connections", "ratio of pattern neurons" , 1./800., 1./800. );
-
-        converter.str("");
-        converter.clear();
-        converter << parameters.output_file << "-" << chunk_time*dt << ".con-rates." << patternRecalled; 
-        PlotConnectionsAndRates(pattern_neurons_rate, pattern_neurons_connections_e, pattern_neurons_connections_i, converter.str(), chunk_time*dt);
-    }
+    converter.str("");
+    converter.clear();
+    converter << parameters.output_file << "-" << chunk_time*dt << ".con-rates." << patternRecalled << ".histogram.png";
+    PlotDualHistogram(pattern_neurons_connections_e, pattern_neurons_connections_i, converter.str(), chunk_time*dt, "green" , "From E", "black", "From I", "Number of incoming connections", "ratio of pattern neurons" , 1./800., 1./800. );
 
 
+    /*  Plot graphs for connections and rates */
+    converter.str("");
+    converter.clear();
+    converter << parameters.output_file << "-" << chunk_time*dt << ".con-rates." << patternRecalled; 
+    PlotConnectionsAndRates(pattern_neurons_rate, pattern_neurons_connections_e, pattern_neurons_connections_i, converter.str(), chunk_time*dt);
+
+    /*  Print collected data to files */
     snr_at_chunk_time = GetSNR(pattern_neurons_rate, noise_neurons_rate);
-    std::cout << "SNR at time " << chunk_time*dt << " is " << snr_at_chunk_time.SNR << "\n";
 
     std::ofstream snr_file, mean_file, std_file, mean_noise_file, std_noise_file;
     converter.str("");
@@ -1766,5 +1808,6 @@ GetIncidentConnectionNumbers(std::unordered_map<unsigned int, unsigned int> &con
     std::cout << "Number of post neurons for E neurons is: " << post_neurons_e.size() << " and uniq is: " << con_ee.size() << std::endl;
     return 0;
 }
+
 
 #endif   /* ----- #ifndef utils_INC  ----- */

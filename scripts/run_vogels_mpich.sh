@@ -123,11 +123,13 @@ function default()
             "$PROGRAM_PREFIX""bin/postprocess_single" -o "$SIM_DIRECTORY" -c "$SIM_DIRECTORY".cfg -S -s -e --pattern
 
             echo "[INFO] Generating combined SNR, STD, Mean, Mean-noise, STD-noise files for postprocessing"
-            sort -g -m 00-SNR-data.* > 00-SNR-data.txt
-            sort -g -m 00-STD-data.* > 00-STD-data.txt
-            sort -g -m 00-Mean-data.* > 00-Mean-data.txt
-            sort -g -m 00-Mean-noise-data.* > 00-Mean-noise-data.txt
-            sort -g -m 00-STD-noise-data.* > 00-STD-noise-data.txt
+            sort -g -m 00-SNR-data.*.txt > 00-SNR-data.txt
+            sort -g -m 00-STD-data.*.txt > 00-STD-data.txt
+            sort -g -m 00-Mean-data.*.txt > 00-Mean-data.txt
+            sort -g -m 00-Mean-noise-data.*.txt > 00-Mean-noise-data.txt
+            sort -g -m 00-STD-noise-data.*.txt > 00-STD-noise-data.txt
+
+            "$PROGRAM_PREFIX""/src/postprocess/scripts/generateSNRGraphs.sh" -s
 
         fi
     popd > /dev/null 2>&1
@@ -140,7 +142,7 @@ function default()
     if [ "xyes" == "x$DELETEDATAFILES" ]
     then
         pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
-            rm *.ras *.weightinfo *.rate *.log *merge* *bras -f
+            rm *.ras *.weightinfo *.rate *.log *merge* *bras 00*.*.txt -f
         popd > /dev/null 2>&1
     fi
     rm -f *.netstate 
