@@ -1,4 +1,6 @@
 cpp/postprocess_single
+cpp/grapher_single
+cpp/postprocess_multisim
 *.swp
 *.swo
 cscope.out
