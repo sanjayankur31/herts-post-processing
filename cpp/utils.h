@@ -733,8 +733,8 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     converter.str("");
     converter.clear();
     converter << "00-firing-rate.i." << chunk_time*dt << "." << world.rank() << ".txt";
-    std::ifstream firing_rates_i;
-    firing_rates_i.open(converter.str(), std::ifstream::in);
+    std::ofstream firing_rates_i;
+    firing_rates_i.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
     if (firing_rates_i.is_open())
     {
         unsigned int i = 1;
@@ -780,32 +780,32 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     converter.str("");
     converter.clear();
     converter << "00-firing-rate.e." << chunk_time*dt << ".txt";
-    std::ifstream firing_rates_e;
-    firing_rates_e.open(converter.str(), std::ifstream::in);
+    std::ofstream firing_rates_e;
+    firing_rates_e.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
     if (firing_rates_e.is_open())
     {
         unsigned int i = 1;
         for (std::vector <unsigned int>::iterator it = neuronsE.begin(); it != neuronsE.end(); it++)
         {
-            firing_rates_E << i++ << "\t" << *it << std::endl;
+            firing_rates_e << i++ << "\t" << *it << std::endl;
         }
     }
-    firing_rates_E.close();
+    firing_rates_e.close();
 
     /*  Print pattern and noise files to a file */
-    std::ifstream firing_rates_e_pattern, connections_e, connections_i;
+    std::ofstream firing_rates_e_pattern, connections_e, connections_i;
     converter.str("");
     converter.clear();
     converter << "00-firing-rate.e.pattern." << chunk_time*dt << ".txt";
-    firing_rates_e_pattern.open(converter.str(), std::ifstream::in);
+    firing_rates_e_pattern.open(converter.str(), std::ofstream::out| std::ofstream::trunc);
     converter.str("");
     converter.clear();
     converter << "00-firing-rate.e.pattern.connections_e." << chunk_time*dt <<  ".txt";
-    connections_e.open(converter.str(), std::ifstream::in);
+    connections_e.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
     converter.str("");
     converter.clear();
     converter << "00-firing-rate.e.pattern.connections_i." << chunk_time*dt <<  ".txt";
-    connections_i.open(converter.str(), std::ifstream::in);
+    connections_i.open(converter.str(), std::ofstream::out| std::ofstream::trunc);
     if (firing_rates_e_pattern.is_open() && connections_e.is_open() && connections_i.is_open())
     {
         for (unsigned int i = 0;  i <= pattern_neurons_rate.size(); i++)
@@ -819,7 +819,7 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     {
         std::cerr << "Couldn't open some file for writing. Skipping. Run again." << std::endl;
     }
-    firing_rates_E.close();
+    firing_rates_e_pattern.close();
     connections_e.close();
     connections_i.close();
 
@@ -854,35 +854,35 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     converter.str("");
     converter.clear();
     converter << "00-SNR-data." << world.rank() << ".txt";
-    snr_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    snr_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
     snr_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.SNR << std::endl;
     snr_file.close();
 
     converter.str("");
     converter.clear();
     converter << "00-Mean-data." << world.rank() << ".txt";
-    mean_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    mean_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
     mean_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.mean << std::endl;
     mean_file.close();
 
     converter.str("");
     converter.clear();
     converter << "00-STD-data." << world.rank() << ".txt";
-    std_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    std_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
     std_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.std << std::endl;
     std_file.close();
 
     converter.str("");
     converter.clear();
     converter << "00-Mean-noise-data." << world.rank() << ".txt";
-    mean_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    mean_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
     mean_noise_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.mean_noise << std::endl;
     mean_noise_file.close();
 ;
     converter.str("");
     converter.clear();
     converter << "00-STD-noise-data." << world.rank() << ".txt";
-    std_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
+    std_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
     std_noise_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.std_noise << std::endl;
     std_noise_file.close();
 
