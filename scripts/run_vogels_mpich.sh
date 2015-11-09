@@ -100,10 +100,10 @@ function default()
         echo "#recall_ratio=$RECALL_RATIO" >> "$SIM_DIRECTORY"".cfg"
 
         echo 
-        echo "[INFO] $ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PROGRAM_PREFIX""auryn/build/src/ mpiexec -n $MPI_RANKS $PROGRAM_PREFIX""bin/vogels --out $SIM_DIRECTORY" "--config $SIM_DIRECTORY"".cfg"
+        echo "[INFO] $ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PROGRAM_PREFIX""auryn/build/src/ mpirun -n $MPI_RANKS $PROGRAM_PREFIX""bin/vogels --out $SIM_DIRECTORY" "--config $SIM_DIRECTORY"".cfg"
         echo 
 
-        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:""$PROGRAM_PREFIX""auryn/build/src/" mpiexec -n $MPI_RANKS "$PROGRAM_PREFIX""bin/vogels" --out $SIM_DIRECTORY --config $SIM_DIRECTORY".cfg" 
+        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:""$PROGRAM_PREFIX""auryn/build/src/" mpirun -n $MPI_RANKS "$PROGRAM_PREFIX""bin/vogels" --out $SIM_DIRECTORY --config $SIM_DIRECTORY".cfg" 
 
         if [ "xyes" == "x$POSTPROCESS" ]
         then
@@ -114,22 +114,29 @@ function default()
             sed -i '/^%/ d' 00-Con_* # get rid of useless headers
             sort -g -m 00-Con_ee* > 00-Con_ee.txt
             sort -g -m 00-Con_ie* > 00-Con_ie.txt
+            rm -f 00-Con_ee.*.txt 00-Con_ie.*.txt
+
             sed '/^%/ d ' 00-Con_ee.txt |  cut -f2 -d " " |sort -n | uniq -c > 00-uniq-ee.txt
             sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " |sort -n | uniq -c > 00-uniq-ie.txt
             sed '/^%/ d ' 00-Con_ee.txt |  cut -f2 -d " " > 00-all-ee.txt
             sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " > 00-all-ie.txt
             wc -l 00-uniq* 00-all* > 00-conn-stats.txt
 
-            "$PROGRAM_PREFIX""bin/postprocess_single" -o "$SIM_DIRECTORY" -c "$SIM_DIRECTORY".cfg -S -s -e --pattern
+            # Run the post process program that processes data from each rank
+            # and prints it out along with my histograms
+            mpirun -n $MPI_RANKS "$PROGRAM_PREFIX""bin/postprocess_single" -o "$SIM_DIRECTORY" -c "$SIM_DIRECTORY".cfg
 
+            # Combine SNR data from different ranks
             echo "[INFO] Generating combined SNR, STD, Mean, Mean-noise, STD-noise files for postprocessing"
-            sort -g -m 00-SNR-data.*.txt > 00-SNR-data.txt
-            sort -g -m 00-STD-data.*.txt > 00-STD-data.txt
-            sort -g -m 00-Mean-data.*.txt > 00-Mean-data.txt
-            sort -g -m 00-Mean-noise-data.*.txt > 00-Mean-noise-data.txt
-            sort -g -m 00-STD-noise-data.*.txt > 00-STD-noise-data.txt
+            sort -g -m 00-SNR-data.*.txt | cut -f2 > 00-SNR-data.txt
+            sort -g -m 00-STD-data.*.txt | cut -f2 > 00-STD-data.txt
+            sort -g -m 00-Mean-data.*.txt | cut -f2 > 00-Mean-data.txt
+            sort -g -m 00-Mean-noise-data.*.txt | cut -f2 > 00-Mean-noise-data.txt
+            sort -g -m 00-STD-noise-data.*.txt | cut -f2 > 00-STD-noise-data.txt
+            rm 00-SNR-data.*.txt 00-STD-data.*.txt 00-Mean-data.*.txt 00-Mean-noise-data.*.txt 00-STD-noise_data.*.txt -f
 
-            "$PROGRAM_PREFIX""/src/postprocess/scripts/generateSNRGraphs.sh" -s
+            # Generate SNR graphs
+            "$PROGRAM_PREFIX""/bin/grapher_single"
 
         fi
     popd > /dev/null 2>&1
