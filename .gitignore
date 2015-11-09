@@ -1,4 +1,4 @@
-cpp/postprocess*
+cpp/postprocess_single
 *.swp
 *.swo
 cscope.out
