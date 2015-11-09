@@ -26,7 +26,7 @@
  * =====================================================================================
  */
 int
-main ( int argc, char *argv[] )
+main ( int ac, char *av[] )
 {
     try
     {
@@ -35,14 +35,6 @@ main ( int argc, char *argv[] )
             ("help,h", "produce help message")
             ("out,o", po::value<std::string>(&(parameters.output_file)), "output filename")
             ("config,c", po::value<std::string>(&(parameters.config_file))->default_value("simulation_config.cfg"),"configuration file to be used to find parameter values for this simulation run")
-            ("all,a","Plot all plots - this may take a while?")
-            ("master,M","Plot master time plot - this may take a while?")
-            ("pattern,p","Plot pattern plots?")
-            ("snr,s","Plot SNR plots after processing ras files?")
-            ("print-snr,S","Print SNR data after processing ras files?")
-            ("generate-snr-plot-from-file,g","Generate metrics from a printed files 00-{SNR,Mean,STD}-data.txt.")
-            ("generate-cum-vs-over-snr-plot-from-file,t","Generate cumulative _VS_ clipped snr from two printed files 00-SNR-data-{overwritten,cumulative}.txt.")
-            ("singleMeanAndSTD,k","Generate a graph with mean and std from one set of data files 00-{Mean,STD}-data.txt")
             ("for-prints,f","Generate graphs for use in papers - this changes the tics and things so they're more visible when embedded in papers")
             ("for-meetings,e","Generate graphs to show in meetings - this increases the font size and reduces ticks")
             ;
@@ -64,44 +56,27 @@ main ( int argc, char *argv[] )
             ("mpi_ranks", po::value<unsigned int>(&(parameters.mpi_ranks)), "Number of MPI ranks being used")
             ;
 
-        if (vm.count("all"))
+        po::options_description visible("Allowed options");
+        visible.add(cli).add(params);
+
+        po::variables_map vm;
+        po::store(po::basic_command_line_parser<char>(ac, av).options(cli).allow_unregistered().run(), vm);
+        po::notify(vm);
+
+        if (vm.count("help"))
         {
-            plot_this.master = true;
-            plot_this.snr_graphs = true;
+            std::cout << visible << "\n";
+            return 0;
         }
-        else
+
+        if (vm.count("for-prints"))
         {
-            if (vm.count("master"))
-            {
-                plot_this.master = true;
-            }
-            if (vm.count("pattern"))
-            if (vm.count("snr"))
-            {
-                plot_this.snr_graphs = true;
-            }
-            if (vm.count("print-snr"))
-            {
-                parameters.print_snr = true;
-            }
-            if (vm.count("png"))
-            {
-                plot_this.formatPNG = true;
-            }
-            if (vm.count("singleMeanAndSTD"))
-            {
-                plot_this.singleMeanAndSTD = true;
-                plot_this.multiMeanAndSTD = false;
-            }
-            if (vm.count("for-prints"))
-            {
-                plot_this.for_prints = true;
-                plot_this.formatPNG = false;
-            }
-            if (vm.count("for-meetings"))
-            {
-                plot_this.for_meetings = true;
-            }
+            plot_this.for_prints = true;
+            plot_this.formatPNG = false;
+        }
+        if (vm.count("for-meetings"))
+        {
+            plot_this.for_meetings = true;
         }
 
         std::ifstream ifs(parameters.config_file.c_str());
@@ -125,6 +100,33 @@ main ( int argc, char *argv[] )
     {
         std::cerr << "Exception of unknown type!\n";
     }
+
+    /*  Generate all my graphs */
+    GenerateSNRPlotFromFile("00-SNR-data.txt");
+
+
+#if  0     /* ----- #if 0 : If0Label_1 ----- */
+
+    std::vector<std::pair<std::string, std::string> > inputs;
+    inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-cumulative.txt", "cumulative"));
+    inputs.emplace_back(std::pair<std::string, std::string>("00-SNR-data-overwritten.txt", "clipped"));
+    GenerateMultiSNRPlotFromFile(inputs);
+#endif     /* ----- #if 0 : If0Label_1 ----- */
+
+    std::vector<boost::tuple<std::string, std::string, std::string> > inputs1;
+    inputs1.emplace_back(boost::tuple<std::string, std::string, std::string> ("00-Mean-data.txt", "00-STD-data.txt", " "));
+    GenerateMultiMeanWithSTDFromFiles(inputs1, "MeanWithSTD");
+
+    inputs1.clear();
+    inputs1.emplace_back(boost::tuple<std::string, std::string, std::string> ("00-Mean-noise-data.txt", "00-STD-noise-data.txt", " "));
+    GenerateMultiMeanWithSTDFromFiles(inputs1, "MeanWithSTD-noise");
+
+
+    inputs1.clear();
+    inputs1.emplace_back(boost::tuple<std::string, std::string, std::string> ("00-Mean-data.txt", "00-STD-data.txt", "p"));
+    inputs1.emplace_back(boost::tuple<std::string, std::string, std::string> ("00-Mean-noise-data.txt", "00-STD-noise-data.txt", "b"));
+    GenerateMultiMeanWithSTDFromFiles(inputs1, "MeanWithSTD-both");
+
 
     return 0;
 }				/* ----------  end of function main  ---------- */
