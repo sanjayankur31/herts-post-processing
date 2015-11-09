@@ -854,35 +854,35 @@ MasterFunction (std::vector<boost::iostreams::mapped_file_source> &spikes_E, std
     converter.str("");
     converter.clear();
     converter << "00-SNR-data." << world.rank() << ".txt";
-    snr_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
+    snr_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
     snr_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.SNR << std::endl;
     snr_file.close();
 
     converter.str("");
     converter.clear();
     converter << "00-Mean-data." << world.rank() << ".txt";
-    mean_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
+    mean_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
     mean_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.mean << std::endl;
     mean_file.close();
 
     converter.str("");
     converter.clear();
     converter << "00-STD-data." << world.rank() << ".txt";
-    std_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
+    std_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
     std_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.std << std::endl;
     std_file.close();
 
     converter.str("");
     converter.clear();
     converter << "00-Mean-noise-data." << world.rank() << ".txt";
-    mean_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
+    mean_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
     mean_noise_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.mean_noise << std::endl;
     mean_noise_file.close();
 ;
     converter.str("");
     converter.clear();
     converter << "00-STD-noise-data." << world.rank() << ".txt";
-    std_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::trunc);
+    std_noise_file.open(converter.str(), std::ofstream::out | std::ofstream::app);
     std_noise_file << (chunk_time*dt) << "\t" << snr_at_chunk_time.std_noise << std::endl;
     std_noise_file.close();
 
@@ -1069,7 +1069,7 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
     unsigned int numlines = std::count(std::istreambuf_iterator<char>(file_stream),std::istreambuf_iterator<char>(), '\n');
     file_stream.close();
 
-    if( (parameters.num_pats * (parameters.num_pats + 3)/2) != numlines)
+    if( (parameters.num_pats * (parameters.num_pats + 1)/2) != numlines)
     {
         std::cerr << "initial check failed. numlines = " << numlines << " numpats = " << parameters.num_pats << "\n";
     }
@@ -1125,8 +1125,9 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
             plot_command << "set label \"\" at " << i+1 << "," << value << " point pointtype " << j+1 << " lc " << lc << " ;\n";
             if (value > max_point)
                 max_point = ceil(value);
+            mean_value += value;
         }
-        file_stream >> mean_value;
+        mean_value /= (float)(i+1.);
         std::cout << i+1 << ":\t" << mean_value << "\n";
         points_means.emplace_back(std::pair<double, double>(i+1, mean_value));
     }
@@ -1135,8 +1136,8 @@ GenerateMetricPlotFromFile(std::string dataFile, std::string metric, std::string
 
     gp << plot_command.str();
 
-    gp << "set xrange[" << 0 << ":" << parameters.num_pats + 1 << "]; \n";
-    gp << "set yrange[:" << max_point << "]; \n";
+    gp << "set xrange[0:" << parameters.num_pats + 1 << "]; \n";
+    gp << "set yrange[0:" << max_point << "]; \n";
     gp << "set ylabel \"" << metric << "\"; \n";
     if(plot_this.for_prints || plot_this.for_meetings)
     {
@@ -1288,7 +1289,7 @@ GenerateMultiMetricPlotFromFile (std::vector<std::pair<std::string, std::string>
         std::string addendum(it->second);
         std::vector<std::pair<double, double> > points_means;
 
-        if( (parameters.num_pats * (parameters.num_pats + 3)/2) != numlines)
+        if( (parameters.num_pats * (parameters.num_pats + 1)/2) != numlines)
         {
             std::cerr << "initial check failed. numlines = " << numlines << " numpats = " << parameters.num_pats << "\n";
         }
@@ -1451,7 +1452,7 @@ GenerateMetric_VS_WPatFromFile(std::vector<std::pair<std::string, double> > inpu
         double w_pat = it->second;
         std::vector<double> means;
 
-        if( (parameters.num_pats * (parameters.num_pats + 3)/2) != numlines)
+        if( (parameters.num_pats * (parameters.num_pats + 1)/2) != numlines)
         {
             std::cerr << "initial check failed. numlines = " << numlines << " numpats = " << parameters.num_pats << "\n";
         }
@@ -1642,7 +1643,7 @@ GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::st
         std::string addendum(it->get<2>());
         std::vector<boost::tuple<double, double, double> > points_means;
 
-        if( (parameters.num_pats * (parameters.num_pats + 3)/2) != numlines_mean || numlines_mean != numlines_std)
+        if( (parameters.num_pats * (parameters.num_pats + 1)/2) != numlines_mean || numlines_mean != numlines_std)
         {
             std::cerr << "initial check failed. numlines = " << numlines_mean << ", " << numlines_std << " numpats = " << parameters.num_pats << "\n";
         }
@@ -1652,22 +1653,28 @@ GenerateMultiMeanWithSTDFromFiles (std::vector<boost::tuple<std::string, std::st
 
         for (unsigned int i = 0; i < parameters.num_pats; i++)
         {
-            double mean_snr = 0.;
-            double std_snr = 0.;
+            double mean_mean = 0.;
+            double mean_std = 0.;
             for(unsigned int j = 0; j <= i; j++)
             {
-                /*  Read but ignore */
-                double snr_value = 0.;
-                file_stream_mean >> snr_value;
-                file_stream_std >> snr_value;
+                double mean;
+                double std;
+
+                file_stream_mean >> mean;
+                file_stream_std >> std;
+
+                mean_mean += mean;
+                mean_std += std;
             }
-            file_stream_mean >> mean_snr;
-            file_stream_std >> std_snr;
-            std_snr /= 2.0;
-            std::cout << i+1 << ":\t" << mean_snr << ", " << std_snr<< "\n";
-            if (mean_snr > max_point)
-                max_point = ceil(mean_snr);
-            points_means.emplace_back(boost::tuple<double, double, double>(i+1, mean_snr, std_snr));
+            mean_mean /= (i + 1.);
+            mean_std /= (i + 1.);
+
+            /*  For bars */
+            mean_std /= 2.;
+            std::cout << i+1 << ":\t" << mean_mean << ", " << mean_std << "\n";
+            if (mean_mean > max_point)
+                max_point = ceil(mean_mean);
+            points_means.emplace_back(boost::tuple<double, double, double>(i+1, mean_mean, mean_std));
         }
         all_points_means.emplace_back(points_means);
         points_means.clear();

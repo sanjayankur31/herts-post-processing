@@ -3,3 +3,5 @@ cpp/postprocess_single
 *.swo
 cscope.out
 tags
+.ropeproject
+*pyc
