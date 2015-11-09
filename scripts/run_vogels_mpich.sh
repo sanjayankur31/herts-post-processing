@@ -30,6 +30,7 @@ POSTPROCESS_MASTER="no"
 DELETEDATAFILES="no"
 RANDOM_PATTERNS="no"
 PATTERNS="3"
+RUNSIMULATION="yes"
 
 function usage ()
 {
@@ -48,73 +49,85 @@ OPTIONS:
     -D  delete datafiles after graph generation (default: $DELETEDATAFILES)
     -t  run post process script to generate master graphs (default: $POSTPROCESS_MASTER)
     -e  number of patterns (default: $PATTERNS)
+    -N  skip running simulation and only postprocess files in a given directory - implies P - (absolute paths only)
 EOF
 
 }
 function default()
 {
     echo "[INFO] Program prefix is: $PROGRAM_PREFIX"
-    SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
-    SIM_DIRECTORY_COMPLETE="$(pwd)""/""$SIM_DIRECTORY"
-    mkdir "$SIM_DIRECTORY_COMPLETE"
 
-    # setup for random pattern files
-    if [ "xyes" == "x$RANDOM_PATTERNS" ]
+    if [ "xyes" == "x$RUNSIMULATION" ]
     then
-        PATTERNFILES_DIR="$SIM_DIRECTORY_COMPLETE""/00_patternfiles/"
-        echo "[INFO] Generating random pattern and recall files with recall ratio of $RECALL_RATIO in $PATTERNFILES_DIR"
-        mkdir "$PATTERNFILES_DIR"
-        pushd "$PATTERNFILES_DIR" > /dev/null 2>&1
-            cp "$PROGRAM_PREFIX""/src/postprocess/scripts/generatePatterns.R" .
-            sed -i "s|recallPercentOfPattern <- 0.50|recallPercentOfPattern <- $RECALL_RATIO|" generatePatterns.R
-            Rscript generatePatterns.R
-        popd > /dev/null 2>&1
-        PATTERNFILE_PREFIX="$PATTERNFILES_DIR""randomPatternFile-"
-        RECALLFILE_PREFIX="$PATTERNFILES_DIR""recallPatternFile-"
 
-    else
-        echo "[INFO] Random patterns not used, default recall ratio of .05 used"
-        echo "[INFO] Pattern files used from $PATTERNFILES_DIR""50-percent/"
+        SIM_DIRECTORY=$(date "+%Y%m%d%H%M")
+        SIM_DIRECTORY_COMPLETE="$(pwd)""/""$SIM_DIRECTORY"
+        mkdir "$SIM_DIRECTORY_COMPLETE"
 
-        PATTERNFILE_PREFIX="$PATTERNFILES_DIR""50-percent/randomPatternFile-"
-        RECALLFILE_PREFIX="$PATTERNFILES_DIR""50-percent/recallPatternFile-"
-    fi
-
-    # the actual simulation
-    CONFIGFILE="$PROGRAM_PREFIX""src/simulation_config.cfg"
-    echo "[INFO] MPI ranks being used: $MPI_RANKS"
-
-    if [ "xyes" == "x$SAVE_TMUX" ]
-    then
-        tmux set-buffer "$SIM_DIRECTORY"
-        echo "[INFO] Saved in tmux buffer for your convenience."
-    fi
-
-    pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
-        cp "$CONFIGFILE" ./$SIM_DIRECTORY.cfg
-        echo "patternfile_prefix=$PATTERNFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
-        echo "recallfile_prefix=$RECALLFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
-        echo "mpi_ranks=$MPI_RANKS" >> "$SIM_DIRECTORY"".cfg"
-        echo "num_pats=$PATTERNS" >>  "$SIM_DIRECTORY"".cfg"
-        echo >> "$SIM_DIRECTORY"".cfg"
-        echo "#recall_ratio=$RECALL_RATIO" >> "$SIM_DIRECTORY"".cfg"
-
-        echo 
-        echo "[INFO] $ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PROGRAM_PREFIX""auryn/build/src/ mpirun -n $MPI_RANKS $PROGRAM_PREFIX""bin/vogels --out $SIM_DIRECTORY" "--config $SIM_DIRECTORY"".cfg"
-        echo 
-
-        LD_LIBRARY_PATH="$LD_LIBRARY_PATH:""$PROGRAM_PREFIX""auryn/build/src/" mpirun -n $MPI_RANKS "$PROGRAM_PREFIX""bin/vogels" --out $SIM_DIRECTORY --config $SIM_DIRECTORY".cfg" 
-
-        if [ "xyes" == "x$POSTPROCESS" ]
+        # setup for random pattern files
+        if [ "xyes" == "x$RANDOM_PATTERNS" ]
         then
+            PATTERNFILES_DIR="$SIM_DIRECTORY_COMPLETE""/00_patternfiles/"
+            echo "[INFO] Generating random pattern and recall files with recall ratio of $RECALL_RATIO in $PATTERNFILES_DIR"
+            mkdir "$PATTERNFILES_DIR"
+            pushd "$PATTERNFILES_DIR" > /dev/null 2>&1
+                cp "$PROGRAM_PREFIX""/src/postprocess/scripts/generatePatterns.R" .
+                sed -i "s|recallPercentOfPattern <- 0.50|recallPercentOfPattern <- $RECALL_RATIO|" generatePatterns.R
+                Rscript generatePatterns.R
+            popd > /dev/null 2>&1
+            PATTERNFILE_PREFIX="$PATTERNFILES_DIR""randomPatternFile-"
+            RECALLFILE_PREFIX="$PATTERNFILES_DIR""recallPatternFile-"
 
+        else
+            echo "[INFO] Random patterns not used, default recall ratio of .05 used"
+            echo "[INFO] Pattern files used from $PATTERNFILES_DIR""50-percent/"
+
+            PATTERNFILE_PREFIX="$PATTERNFILES_DIR""50-percent/randomPatternFile-"
+            RECALLFILE_PREFIX="$PATTERNFILES_DIR""50-percent/recallPatternFile-"
+        fi
+
+        # the actual simulation
+        CONFIGFILE="$PROGRAM_PREFIX""src/simulation_config.cfg"
+        echo "[INFO] MPI ranks being used: $MPI_RANKS"
+
+        if [ "xyes" == "x$SAVE_TMUX" ]
+        then
+            tmux set-buffer "$SIM_DIRECTORY"
+            echo "[INFO] Saved in tmux buffer for your convenience."
+        fi
+
+        pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
+            cp "$CONFIGFILE" ./$SIM_DIRECTORY.cfg
+            echo "patternfile_prefix=$PATTERNFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
+            echo "recallfile_prefix=$RECALLFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
+            echo "mpi_ranks=$MPI_RANKS" >> "$SIM_DIRECTORY"".cfg"
+            echo "num_pats=$PATTERNS" >>  "$SIM_DIRECTORY"".cfg"
+            echo >> "$SIM_DIRECTORY"".cfg"
+            echo "#recall_ratio=$RECALL_RATIO" >> "$SIM_DIRECTORY"".cfg"
+
+            echo 
+            echo "[INFO] $ LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$PROGRAM_PREFIX""auryn/build/src/ mpirun -n $MPI_RANKS $PROGRAM_PREFIX""bin/vogels --out $SIM_DIRECTORY" "--config $SIM_DIRECTORY"".cfg"
+            echo 
+
+            LD_LIBRARY_PATH="$LD_LIBRARY_PATH:""$PROGRAM_PREFIX""auryn/build/src/" mpirun -n $MPI_RANKS "$PROGRAM_PREFIX""bin/vogels" --out $SIM_DIRECTORY --config $SIM_DIRECTORY".cfg" 
+
+        popd > /dev/null 2>&1
+    else
+        SIM_DIRECTORY=$(echo $RUNSIMULATION | sed -e 's|\.||g' -e 's|/||g')
+        SIM_DIRECTORY_COMPLETE="$(pwd)""/"$SIM_DIRECTORY
+    fi
+
+    if [ "xyes" == "x$POSTPROCESS" ]
+    then
+        pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
+
+            MPI_RANKS=$(grep "mpi_ranks=" $SIM_DIRECTORY.cfg | sed "s|mpi_ranks=||")
             echo "[INFO] Postprocessing generated data files."
 
             echo "[INFO] Generating combined connection files for postprocessing"
             sed -i '/^%/ d' 00-Con_* # get rid of useless headers
             sort -g -m 00-Con_ee* > 00-Con_ee.txt
             sort -g -m 00-Con_ie* > 00-Con_ie.txt
-            rm -f 00-Con_ee.*.txt 00-Con_ie.*.txt
 
             sed '/^%/ d ' 00-Con_ee.txt |  cut -f2 -d " " |sort -n | uniq -c > 00-uniq-ee.txt
             sed '/^%/ d ' 00-Con_ie.txt |  cut -f2 -d " " |sort -n | uniq -c > 00-uniq-ie.txt
@@ -133,13 +146,12 @@ function default()
             sort -g -m 00-Mean-data.*.txt | cut -f2 > 00-Mean-data.txt
             sort -g -m 00-Mean-noise-data.*.txt | cut -f2 > 00-Mean-noise-data.txt
             sort -g -m 00-STD-noise-data.*.txt | cut -f2 > 00-STD-noise-data.txt
-            rm 00-SNR-data.*.txt 00-STD-data.*.txt 00-Mean-data.*.txt 00-Mean-noise-data.*.txt 00-STD-noise_data.*.txt -f
 
             # Generate SNR graphs
-            "$PROGRAM_PREFIX""/bin/grapher_single"
+            "$PROGRAM_PREFIX""/bin/grapher_single" -c $SIM_DIRECTORY.cfg -o $SIM_DIRECTORY
+        popd > /dev/null 2>&1
 
-        fi
-    popd > /dev/null 2>&1
+    fi
 
     if [ "xyes" == "x$POSTPROCESS_MASTER" ]
     then
@@ -150,6 +162,8 @@ function default()
     then
         pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
             rm *.ras *.weightinfo *.rate *.log *merge* *bras 00*.*.txt -f
+            rm -f 00-Con_ee.*.txt 00-Con_ie.*.txt
+            rm 00-SNR-data.*.txt 00-STD-data.*.txt 00-Mean-data.*.txt 00-Mean-noise-data.*.txt 00-STD-noise_data.*.txt -f
         popd > /dev/null 2>&1
     fi
     rm -f *.netstate 
@@ -160,7 +174,7 @@ function default()
 
 function run()
 {
-    while getopts "hp:rs:m:tPDe:" OPTION
+    while getopts "hp:rs:m:tPDe:N:" OPTION
     do
         case $OPTION in
             p)
@@ -172,7 +186,6 @@ function run()
             s)
                 RECALL_RATIO=$OPTARG
                 RANDOM_PATTERNS="yes"
-                default
                 ;;
             m) 
                 MPI_RANKS=$OPTARG
@@ -188,6 +201,10 @@ function run()
                 ;;
             e)
                 PATTERNS=$OPTARG
+                ;;
+            N)
+                RUNSIMULATION=$OPTARG
+                POSTPROCESS="yes"
                 ;;
             h)
                 usage
