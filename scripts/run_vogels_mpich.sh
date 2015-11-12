@@ -67,7 +67,7 @@ function default()
         # setup for random pattern files
         if [ "xyes" == "x$RANDOM_PATTERNS" ]
         then
-            PATTERNFILES_DIR="$SIM_DIRECTORY_COMPLETE""/00_patternfiles/"
+            PATTERNFILES_DIR="./00_patternfiles/"
             echo "[INFO] Generating random pattern and recall files with recall ratio of $RECALL_RATIO in $PATTERNFILES_DIR"
             mkdir "$PATTERNFILES_DIR"
             pushd "$PATTERNFILES_DIR" > /dev/null 2>&1
