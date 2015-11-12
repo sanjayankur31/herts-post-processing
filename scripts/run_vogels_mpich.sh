@@ -64,39 +64,40 @@ function default()
         SIM_DIRECTORY_COMPLETE="$(pwd)""/""$SIM_DIRECTORY"
         mkdir "$SIM_DIRECTORY_COMPLETE"
 
-        # setup for random pattern files
-        if [ "xyes" == "x$RANDOM_PATTERNS" ]
-        then
-            PATTERNFILES_DIR="./00_patternfiles/"
-            echo "[INFO] Generating random pattern and recall files with recall ratio of $RECALL_RATIO in $PATTERNFILES_DIR"
-            mkdir "$PATTERNFILES_DIR"
-            pushd "$PATTERNFILES_DIR" > /dev/null 2>&1
-                cp "$PROGRAM_PREFIX""/src/postprocess/scripts/generatePatterns.R" .
-                sed -i "s|recallPercentOfPattern <- 0.50|recallPercentOfPattern <- $RECALL_RATIO|" generatePatterns.R
-                Rscript generatePatterns.R
-            popd > /dev/null 2>&1
-            PATTERNFILE_PREFIX="$PATTERNFILES_DIR""randomPatternFile-"
-            RECALLFILE_PREFIX="$PATTERNFILES_DIR""recallPatternFile-"
-
-        else
-            echo "[INFO] Random patterns not used, default recall ratio of .05 used"
-            echo "[INFO] Pattern files used from $PATTERNFILES_DIR""50-percent/"
-
-            PATTERNFILE_PREFIX="$PATTERNFILES_DIR""50-percent/randomPatternFile-"
-            RECALLFILE_PREFIX="$PATTERNFILES_DIR""50-percent/recallPatternFile-"
-        fi
-
-        # the actual simulation
-        CONFIGFILE="$PROGRAM_PREFIX""src/simulation_config.cfg"
-        echo "[INFO] MPI ranks being used: $MPI_RANKS"
-
-        if [ "xyes" == "x$SAVE_TMUX" ]
-        then
-            tmux set-buffer "$SIM_DIRECTORY"
-            echo "[INFO] Saved in tmux buffer for your convenience."
-        fi
-
         pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
+
+            # setup for random pattern files
+            if [ "xyes" == "x$RANDOM_PATTERNS" ]
+            then
+                PATTERNFILES_DIR="./00_patternfiles/"
+                echo "[INFO] Generating random pattern and recall files with recall ratio of $RECALL_RATIO in $PATTERNFILES_DIR"
+                mkdir "$PATTERNFILES_DIR"
+                pushd "$PATTERNFILES_DIR" > /dev/null 2>&1
+                    cp "$PROGRAM_PREFIX""/src/postprocess/scripts/generatePatterns.R" .
+                    sed -i "s|recallPercentOfPattern <- 0.50|recallPercentOfPattern <- $RECALL_RATIO|" generatePatterns.R
+                    Rscript generatePatterns.R
+                popd > /dev/null 2>&1
+                PATTERNFILE_PREFIX="$PATTERNFILES_DIR""randomPatternFile-"
+                RECALLFILE_PREFIX="$PATTERNFILES_DIR""recallPatternFile-"
+
+            else
+                echo "[INFO] Random patterns not used, default recall ratio of .05 used"
+                echo "[INFO] Pattern files used from $PATTERNFILES_DIR""50-percent/"
+
+                PATTERNFILE_PREFIX="$PATTERNFILES_DIR""50-percent/randomPatternFile-"
+                RECALLFILE_PREFIX="$PATTERNFILES_DIR""50-percent/recallPatternFile-"
+            fi
+
+            # the actual simulation
+            CONFIGFILE="$PROGRAM_PREFIX""src/simulation_config.cfg"
+            echo "[INFO] MPI ranks being used: $MPI_RANKS"
+
+            if [ "xyes" == "x$SAVE_TMUX" ]
+            then
+                tmux set-buffer "$SIM_DIRECTORY"
+                echo "[INFO] Saved in tmux buffer for your convenience."
+            fi
+
             cp "$CONFIGFILE" ./$SIM_DIRECTORY.cfg
             echo "patternfile_prefix=$PATTERNFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
             echo "recallfile_prefix=$RECALLFILE_PREFIX" >> "$SIM_DIRECTORY"".cfg"
