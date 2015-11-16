@@ -80,7 +80,7 @@ main ( int ac, char *av[] )
             ("graph_widthI", po::value<unsigned int>(&(parameters.graph_widthI)), "Inhibitory columns in the final matrix")
             ("stage_times", po::value<std::vector<unsigned int> >(&(parameters.stage_times))-> multitoken(), "comma separated list of times for each stage in order")
             ("plot_times", po::value<std::vector<double> >(&(parameters.plot_times))-> multitoken(), "comma separated list of additional plot times")
-            ("mpi_ranks", po::value<unsigned int>(&(parameters.mpi_ranks)), "Number of MPI ranks being used")
+            ("mpi_ranks", po::value<unsigned int>(&(parameters.mpi_ranks)), "Number of MPI ranks that were used to run the simulation")
             ;
 
         po::options_description visible("Allowed options");
@@ -123,7 +123,7 @@ main ( int ac, char *av[] )
     
     /*  diagnostics printed by rank 0 only */
     if (world.rank() == 0)
-        std::cout << "Ranks available and therefore in use: " << parameters.mpi_ranks << "\n";
+        std::cout << "Ranks available and therefore in use: " << world.size() << "\n";
 
     /*-----------------------------------------------------------------------------
      *  BEGIN SETUP - each rank will run this code

@@ -44,7 +44,7 @@ OPTIONS:
     -p  program_prefix (default: $PROGRAM_PREFIX)
     -r  use randomly generated pattern files (default: $RANDOM_PATTERNS)
     -s  ratio of recall neurons (default: $RECALL_RATIO). IMPLIES -r.
-    -m  number of mpi ranks to use (default: taken from simulation_config.cfg)
+    -m  number of mpi ranks to use (default: $MPI_RANKS - can be different for simulation and post processing)
     -P  postprocess to generate SNR graphs (default: $POSTPROCESS)
     -D  delete datafiles after graph generation (default: $DELETEDATAFILES)
     -t  run post process script to generate master graphs (default: $POSTPROCESS_MASTER)
@@ -122,7 +122,6 @@ function default()
     then
         pushd "$SIM_DIRECTORY_COMPLETE" > /dev/null 2>&1
 
-            MPI_RANKS=$(grep "mpi_ranks=" $SIM_DIRECTORY.cfg | sed "s|mpi_ranks=||")
             echo "[INFO] Postprocessing generated data files."
 
             echo "[INFO] Generating combined connection files for postprocessing"
